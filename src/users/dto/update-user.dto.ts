@@ -12,16 +12,17 @@ export class UpdateUserDto {
   @ApiProperty({
     example: 'nuevo@ejemplo.com',
     required: false,
-    description: 'Nuevo correo electrónico',
+    description: 'Nuevo correo electrónico del usuario',
   })
   @IsOptional()
   @IsEmail({}, { message: 'El formato de email no es válido' })
   email?: string;
 
   @ApiProperty({
-    example: 'NuevoNombre',
+    example: 'Carlos Rodríguez',
     required: false,
-    description: 'Nuevo nombre',
+    minLength: 2,
+    description: 'Nuevo nombre completo',
   })
   @IsOptional()
   @IsString()
@@ -30,8 +31,9 @@ export class UpdateUserDto {
 
   @ApiProperty({
     enum: Role,
+    enumName: 'Role',
     required: false,
-    description: 'Nuevo rol del usuario',
+    description: 'Nuevo rol del usuario. Solo admins pueden cambiar roles.',
   })
   @IsOptional()
   @IsEnum(Role, { message: 'El rol especificado no es válido' })
@@ -40,7 +42,8 @@ export class UpdateUserDto {
   @ApiProperty({
     example: 'NuevaContrasena123!',
     required: false,
-    description: 'Nueva contraseña',
+    minLength: 6,
+    description: 'Nueva contraseña (mínimo 6 caracteres)',
   })
   @IsOptional()
   @IsString()
