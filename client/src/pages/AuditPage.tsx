@@ -1,9 +1,5 @@
 import { useEffect, useState } from 'react';
-import { audit } from '../utils/api';
-
-interface AuditPageProps {
-  ticketId: string;
-}
+import { auth, audit } from '../utils/api';
 
 export default function AuditPage() {
   const params = new URLSearchParams(window.location.hash);

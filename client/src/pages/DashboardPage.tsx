@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react';
 import { auth, tickets } from '../utils/api';
 
 export default function DashboardPage() {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [ticketList, setTicketList] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadTickets() {
       try {
-        const data = await tickets.list(1, 20);
-        setTickets(data.items);
+        const data = await ticketService.list(1, 20);
+        setTicketList(data.items);
       } catch (e: any) {
         setError(e.message);
       }
@@ -31,10 +31,7 @@ export default function DashboardPage() {
             <span className="text-gray-600">
               Bienvenido, {JSON.parse(localStorage.getItem('user') || '{}').name || 'Usuario'}
             </span>
-            <button
-              onClick={() => auth.logout()}
-              className="text-sm text-blue-600 hoverunderline"
-            >
+            <button onClick={() => auth.logout()} className="text-sm text-blue-600 hover-underline">
               Cerrar sesión
             </button>
           </div>
@@ -75,7 +72,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {tickets.map((ticket) => (
+          {ticketList.map((ticket) => (
             <div
               key={ticket.id}
               className="bg-white rounded-lg shadow p-5 hover:shadow-xl transition-shadow"
