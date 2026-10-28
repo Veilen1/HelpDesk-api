@@ -13,14 +13,83 @@ enum Role {
   ADMIN
 }
 
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AuditAction {
+  CREATED
+  STATUS_CHANGED
+  PRIORITY_CHANGED
+  ASSIGNED
+  COMMENT_ADDED
+}
+
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      Role     @default(CUSTOMER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String     @id @default(uuid())
+  email           String     @unique
+  password        String
+  name            String
+  role            Role       @default(CUSTOMER)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  createdTickets  Ticket[]   @relation("TicketCreator")
+  assignedTickets Ticket[]   @relation("TicketAssignee")
+  comments        Comment[]
+  auditLogs       AuditLog[]
 
   @@map("users")
+}
+
+model Ticket {
+  id           String         @id @default(uuid())
+  title        String
+  description  String
+  status       TicketStatus   @default(OPEN)
+  priority     TicketPriority @default(MEDIUM)
+  creatorId    String
+  creator      User           @relation("TicketCreator", fields: [creatorId], references: [id])
+  assignedToId String?
+  assignedTo   User?          @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  comments     Comment[]
+  auditLogs    AuditLog[]
+
+  @@map("tickets")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("comments")
+}
+
+model AuditLog {
+  id        String      @id @default(uuid())
+  ticketId  String
+  ticket    Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?       @relation(fields: [userId], references: [id])
+  action    AuditAction
+  details   String?
+  createdAt DateTime    @default(now())
+
+  @@map("audit_logs")
 }
