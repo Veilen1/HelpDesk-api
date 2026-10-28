@@ -8,4 +8,8 @@ export const environmentValidationSchema = Joi.object({
   DATABASE_URL: Joi.string().default(
     'postgresql://postgres:postgres@localhost:5432/helpdesk?schema=public',
   ),
+  JWT_SECRET: Joi.string().default(
+    'super-secret-helpdesk-key-for-dev-change-in-prod',
+  ),
+  JWT_EXPIRES_IN: Joi.string().default('1d'),
 });
