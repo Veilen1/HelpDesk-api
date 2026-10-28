@@ -2,7 +2,7 @@
 
 API REST para gestionar tickets de soporte, construida con NestJS como proyecto de portfolio para demostrar buenas prácticas de backend con TypeScript.
 
-> Estado actual: bootstrap inicial de NestJS. El dominio de soporte se implementará de forma incremental y cada etapa quedará registrada en un commit atómico.
+> Estado actual: PostgreSQL configurado mediante Docker Compose y variables de entorno validadas.
 
 ## Objetivo del proyecto
 
@@ -22,7 +22,7 @@ El flujo principal del producto será:
 - Prisma
 - JWT y Passport
 - Swagger / OpenAPI
-- Jest y Supertest
+- Jest / Vitest y Supertest
 - Docker Compose para el entorno local
 
 ## Alcance del MVP
@@ -57,7 +57,7 @@ src/
 
 - Node.js 20 o superior.
 - npm 10 o superior.
-- Docker y Docker Compose cuando se agregue PostgreSQL.
+- Docker y Docker Compose para PostgreSQL local.
 
 ## Instalación
 
@@ -71,12 +71,27 @@ Copiar `.env.example` como `.env` para configurar el entorno local:
 cp .env.example .env
 ```
 
-Variables disponibles actualmente:
+Variables disponibles:
 
 | Variable | Descripción | Valor por defecto |
 | --- | --- | --- |
 | `NODE_ENV` | Entorno de ejecución | `development` |
 | `PORT` | Puerto HTTP de la API | `3000` |
+| `DATABASE_URL` | URL de conexión a PostgreSQL | `postgresql://postgres:postgres@localhost:5432/helpdesk?schema=public` |
+
+### Base de datos local (Docker Compose)
+
+Para iniciar el contenedor de PostgreSQL de desarrollo:
+
+```bash
+docker compose up -d
+```
+
+Para detener el contenedor:
+
+```bash
+docker compose down
+```
 
 ## Comandos disponibles
 
@@ -100,14 +115,12 @@ npm run test:e2e
 npm run test:cov
 ```
 
-En el estado actual la aplicación de ejemplo responde en `GET /`. La configuración de entorno ya se valida al iniciar la aplicación; la conexión a base de datos se agregará en la siguiente etapa.
-
 ## Roadmap
 
 - [x] Inicializar aplicación NestJS.
 - [x] Configurar scripts base, lint y tests.
 - [x] Configurar variables de entorno.
-- [ ] Agregar PostgreSQL con Docker Compose.
+- [x] Agregar PostgreSQL con Docker Compose.
 - [ ] Integrar Prisma y migraciones.
 - [ ] Implementar usuarios y autenticación.
 - [ ] Implementar roles y autorización.
