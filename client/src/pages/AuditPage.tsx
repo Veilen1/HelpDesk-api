@@ -30,9 +30,7 @@ export default function AuditPage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <h1 className="text-xl font-bold">HelpDesk API</h1>
           <div className="flex items-center gap-4">
-            <span className="text-gray-600">
-              Bienvenido
-            </span>
+            <span className="text-gray-600">Bienvenido</span>
             <button onClick={() => auth.logout()} className="text-sm text-blue-600 hover-underline">
               Cerrar sesión
             </button>

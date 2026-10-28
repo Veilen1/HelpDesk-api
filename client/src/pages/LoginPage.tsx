@@ -12,7 +12,7 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const { user, token } = await auth.login(email, password);
+      const { token } = await auth.login(email, password);
       localStorage.setItem('token', token);
       window.location.hash = '/dashboard';
     } catch (e: any) {

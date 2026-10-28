@@ -1,9 +1,5 @@
 import { useEffect, useState } from 'react';
-import { auth, tickets, comments, audit } from '../utils/api';
-
-interface TicketFormProps {
-  onClose: () => void;
-}
+import { auth, tickets, comments, Ticket, Comment } from '../utils/api';
 
 export default function TicketDetailPage() {
   const params = new URLSearchParams(window.location.hash);
@@ -100,7 +96,7 @@ export default function TicketDetailPage() {
           </div>
         </div>
 
-        {user.role === 'ADMIN' || user.role === 'AGENT' && ticket.userId !== 'current-user' ? (
+        {user.role === 'ADMIN' || (user.role === 'AGENT' && ticket.userId !== 'current-user') ? (
           assignMode ? (
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">Reasignar a agente</label>
@@ -132,14 +128,18 @@ export default function TicketDetailPage() {
           )
         ) : null}
 
-        <div className="mb-6">
+        <div>
           <h3 className="text-xl font-bold mb-3">Comentarios ({commentsList.length})</h3>
-          {commentsList.map((comment) => (
-            <div key={comment.id} className="bg-gray-50 rounded-md p-3 mb-3">
-              <p className="font-medium">{comment.userId}: {comment.text}</p>
-              <p className="text-xs text-gray-500">{new Date(comment.createdAt).toLocaleTimeString()}</p>
+          {commentsList.length > 0 && (
+            <div className="space-y-2">
+              {commentsList.map((comment) => (
+                <div key={comment.id} className="bg-gray-50 rounded-md p-3 mb-3">
+                  <p className="font-medium">{comment.userId}: {comment.text}</p>
+                  <p className="text-xs text-gray-500">{new Date(comment.createdAt).toLocaleTimeString()}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
           {user.role === 'ADMIN' || user.role === 'AGENT' || ticket.userId === user.id ? (
             <div className="mt-4">
               <textarea
@@ -155,7 +155,7 @@ export default function TicketDetailPage() {
                   if (newComment.trim()) {
                     comments.create(ticketId, newComment).then(() => {
                       setNewComment('');
-                      setCommentsList(prev => [comments.create(ticketId, newComment), ...prev]);
+                      setComments(prev => [...prev, comments.create(ticketId, newComment)]);
                     }).catch((e: any) => alert(e.message));
                   }
                 }}

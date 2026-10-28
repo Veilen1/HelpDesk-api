@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { auth, tickets } from '../utils/api';
+import { auth, tickets, Ticket } from '../utils/api';
 
 export default function DashboardPage() {
   const [ticketList, setTicketList] = useState<Ticket[]>([]);
@@ -9,7 +9,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadTickets() {
       try {
-        const data = await ticketService.list(1, 20);
+        const data = await tickets.list(1, 20);
         setTicketList(data.items);
       } catch (e: any) {
         setError(e.message);
