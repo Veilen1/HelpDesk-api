@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { auth, tickets, comments, Ticket, Comment } from '../utils/api';
+import { auth, tickets, comments } from '../utils/api';
+import type { Ticket, Comment } from '../utils/api';
 
 export default function TicketDetailPage() {
   const params = new URLSearchParams(window.location.hash);
@@ -153,9 +154,9 @@ export default function TicketDetailPage() {
               <button
                 onClick={() => {
                   if (newComment.trim()) {
-                    comments.create(ticketId, newComment).then(() => {
+                    comments.create(ticketId, newComment).then((newCommentData) => {
                       setNewComment('');
-                      setComments(prev => [...prev, comments.create(ticketId, newComment)]);
+                      setComments(prev => [...prev, newCommentData]);
                     }).catch((e: any) => alert(e.message));
                   }
                 }}

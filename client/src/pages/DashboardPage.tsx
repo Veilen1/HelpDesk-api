@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { auth, tickets, Ticket } from '../utils/api';
+import { auth, tickets } from '../utils/api';
+import type { Ticket } from '../utils/api';
 
 export default function DashboardPage() {
   const [ticketList, setTicketList] = useState<Ticket[]>([]);
