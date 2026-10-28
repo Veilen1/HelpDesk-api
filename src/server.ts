@@ -27,8 +27,21 @@ export function configureApp(app: INestApplication): void {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
-  SwaggerModule.setup('api/docs', app, document);
+
+  const swaggerVersion = '5.9.0';
+  const customOptions = {
+    customSiteTitle: 'HelpDesk API Docs',
+    customJs: [
+      `https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/${swaggerVersion}/swagger-ui-bundle.js`,
+      `https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/${swaggerVersion}/swagger-ui-standalone-preset.js`,
+    ],
+    customCssUrl: [
+      `https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/${swaggerVersion}/swagger-ui.css`,
+    ],
+  };
+
+  SwaggerModule.setup('docs', app, document, customOptions);
+  SwaggerModule.setup('api/docs', app, document, customOptions);
 }
 
 export async function createNestServer(): Promise<Express> {
