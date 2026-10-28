@@ -15,8 +15,15 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should return API status object', () => {
+      const response = appController.getHello();
+      expect(response).toEqual({
+        status: 'online',
+        name: 'HelpDesk API',
+        description: 'API REST para gestión de tickets de soporte',
+        docs: '/docs',
+        version: '1.0.0',
+      });
     });
   });
 });

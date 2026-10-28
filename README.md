@@ -2,7 +2,7 @@
 
 API REST para gestionar tickets de soporte, construida con NestJS como proyecto de portfolio para demostrar buenas prácticas de backend con TypeScript.
 
-> Estado actual: PostgreSQL configurado mediante Docker Compose y variables de entorno validadas.
+> Estado actual: Preparado para despliegue en Vercel, Swagger integrado y PostgreSQL configurado en Docker Compose.
 
 ## Objetivo del proyecto
 
@@ -14,16 +14,16 @@ El flujo principal del producto será:
 4. Cliente y agente intercambian comentarios.
 5. Los cambios importantes quedan registrados en una auditoría.
 
-## Stack planificado
+## Stack
 
 - [NestJS](https://nestjs.com/)
 - TypeScript
-- PostgreSQL
-- Prisma
+- PostgreSQL & Prisma ORM
 - JWT y Passport
 - Swagger / OpenAPI
-- Jest / Vitest y Supertest
+- Vitest y Supertest
 - Docker Compose para el entorno local
+- Despliegue serverless en Vercel
 
 ## Alcance del MVP
 
@@ -34,23 +34,29 @@ El flujo principal del producto será:
 - Comentarios asociados a tickets.
 - Reglas de autorización por rol y por propietario.
 - Auditoría de cambios relevantes.
-- Validación de entrada, documentación y tests.
+- Validación de entrada, documentación interactiva Swagger y tests.
 
 Las notificaciones por email, Redis, adjuntos, WebSockets, microservicios y Kubernetes quedan fuera de la primera versión para mantener un alcance realista y entregar un MVP sólido.
 
-## Estructura esperada
+## Estructura
 
 ```text
+api/
+└── index.ts        # Entrypoint serverless para Vercel
 src/
-├── auth/
-├── users/
-├── tickets/
-├── comments/
-├── audit/
-├── prisma/
-├── config/
-├── common/
-└── main.ts
+├── auth/           # Autenticación y JWT
+├── users/          # Gestión de usuarios
+├── tickets/        # Ciclo de vida de tickets
+├── comments/       # Comentarios
+├── audit/          # Auditoría de eventos
+├── prisma/         # Servicio de base de datos
+├── config/         # Validación de entorno
+├── server.ts       # Bootstrap y configuración Swagger/Pipes
+└── main.ts         # Entrypoint local
+prisma/
+└── schema.prisma   # Esquema de datos PostgreSQL
+vercel.json         # Configuración de despliegue en Vercel
+docker-compose.yml  # PostgreSQL para desarrollo local
 ```
 
 ## Requisitos
@@ -93,6 +99,17 @@ Para detener el contenedor:
 docker compose down
 ```
 
+### Despliegue en Vercel
+
+El proyecto está preparado para ejecutarse como función serverless en [Vercel](https://vercel.com):
+
+1. Conectar el repositorio de GitHub `Veilen1/HelpDesk-api` en el panel de Vercel (**Add New** -> **Project**).
+2. Vercel detecta automáticamente `vercel.json` y compila la función en `api/index.ts`.
+3. (Opcional) En **Settings > Environment Variables**, configurar `DATABASE_URL` si se utiliza una base de datos PostgreSQL remota (ej. Neon, Supabase, Render).
+4. Al desplegar:
+   - Raíz: `GET /` muestra el estado online y metadatos de la API.
+   - Documentación Swagger: `GET /docs` o `GET /api/docs`.
+
 ## Comandos disponibles
 
 ```bash
@@ -114,26 +131,6 @@ npm run test:e2e
 # Cobertura
 npm run test:cov
 ```
-
-## Roadmap
-
-- [x] Inicializar aplicación NestJS.
-- [x] Configurar scripts base, lint y tests.
-- [x] Configurar variables de entorno.
-- [x] Agregar PostgreSQL con Docker Compose.
-- [ ] Integrar Prisma y migraciones.
-- [ ] Implementar usuarios y autenticación.
-- [ ] Implementar roles y autorización.
-- [ ] Implementar tickets, filtros y paginación.
-- [ ] Implementar comentarios.
-- [ ] Implementar auditoría.
-- [ ] Documentar la API con Swagger.
-- [ ] Agregar tests unitarios y e2e del flujo completo.
-- [ ] Agregar CI.
-
-## Decisiones de diseño
-
-El proyecto prioriza un monolito modular antes que microservicios. Cada módulo representa una capacidad del dominio y las reglas de autorización se validarán en los servicios, no únicamente en guards de roles. Las migraciones de base de datos serán versionadas y reproducibles.
 
 ## Licencia
 

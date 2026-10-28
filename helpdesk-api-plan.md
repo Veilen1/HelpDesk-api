@@ -203,3 +203,4 @@ npm run test:e2e
 ## Primer paso de implementación
 
 Inicializar la aplicación NestJS en el workspace, crear el repositorio Git y dejar el primer commit funcional antes de agregar base de datos o lógica de dominio.
+
