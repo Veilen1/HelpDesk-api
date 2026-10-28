@@ -65,6 +65,19 @@ src/
 npm install
 ```
 
+Copiar `.env.example` como `.env` para configurar el entorno local:
+
+```bash
+cp .env.example .env
+```
+
+Variables disponibles actualmente:
+
+| Variable | Descripción | Valor por defecto |
+| --- | --- | --- |
+| `NODE_ENV` | Entorno de ejecución | `development` |
+| `PORT` | Puerto HTTP de la API | `3000` |
+
 ## Comandos disponibles
 
 ```bash
@@ -87,13 +100,13 @@ npm run test:e2e
 npm run test:cov
 ```
 
-En el estado actual la aplicación de ejemplo responde en `GET /` y todavía no requiere variables de entorno ni una base de datos.
+En el estado actual la aplicación de ejemplo responde en `GET /`. La configuración de entorno ya se valida al iniciar la aplicación; la conexión a base de datos se agregará en la siguiente etapa.
 
 ## Roadmap
 
 - [x] Inicializar aplicación NestJS.
 - [x] Configurar scripts base, lint y tests.
-- [ ] Configurar variables de entorno.
+- [x] Configurar variables de entorno.
 - [ ] Agregar PostgreSQL con Docker Compose.
 - [ ] Integrar Prisma y migraciones.
 - [ ] Implementar usuarios y autenticación.
