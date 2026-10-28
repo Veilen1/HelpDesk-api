@@ -4,17 +4,22 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import TicketDetailPage from './pages/TicketDetailPage'
 import AuditPage from './pages/AuditPage'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { auth } from './utils/api'
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
   // Verificar autenticación al cargar
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (token) {
-      auth.me().then(() => {}).catch(() => {
+      auth.me().then(() => setIsAuthenticated(true)).catch(() => {
         localStorage.removeItem('token')
+        setIsAuthenticated(false)
       })
+    } else {
+      setIsAuthenticated(false)
     }
   }, [])
 
@@ -22,7 +27,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={
-          auth.me().then(() => <DashboardPage />).catch(() => <LoginPage />)
+          isAuthenticated ? <DashboardPage /> : <LoginPage />
         } />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
