@@ -1,5 +1,4 @@
 node_modules/
-
 dist/
 coverage/
 
@@ -12,3 +11,7 @@ coverage/
 
 .DS_Store
 Thumbs.db
+
+# Vercel outputs
+*.vercel
+vercel-out/
