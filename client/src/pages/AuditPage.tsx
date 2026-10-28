@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+// v2: fixed TypeScript errors
 import { auth, audit } from '../utils/api';
 
 export default function AuditPage() {
