@@ -16,7 +16,7 @@ export default function LoginPage() {
     try {
       const { token } = await auth.login(email, password);
       localStorage.setItem('token', token);
-      window.location.hash = '/dashboard';
+      navigate('/dashboard');
     } catch (e: any) {
       setError(e.message);
     }
@@ -58,7 +58,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="mt-6 text-sm text-center">
-          No tienes cuenta? <a onClick={(e: any) => { e.preventDefault(); navigate('/register'); }} className="text-blue-600 cursor-pointer">Regístrate</a>
+          No tienes cuenta? <button onClick={(e: any) => { e.preventDefault(); navigate('/register'); }} className="text-blue-600 cursor-pointer">Regístrate</button>
         </p>
       </div>
     </div>
