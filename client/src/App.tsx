@@ -1,9 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import { DashboardPage } from './pages/DashboardPage'
-import { LoginPage } from './pages/LoginPage'
-import { RegisterPage } from './pages/RegisterPage'
-import { TicketDetailPage } from './pages/TicketDetailPage'
-import { AuditPage } from './pages/AuditPage'
+import DashboardPage from './pages/DashboardPage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import TicketDetailPage from './pages/TicketDetailPage'
+import AuditPage from './pages/AuditPage'
+import { useEffect } from 'react'
 import { auth } from './utils/api'
 
 function App() {
