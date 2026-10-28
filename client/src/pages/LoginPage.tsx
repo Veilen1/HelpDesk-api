@@ -56,7 +56,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="mt-6 text-sm text-center">
-          No tienes cuenta? <a href="#" onClick={(e: any) => { e.preventDefault(); window.location.hash = 'register'; }} className="text-blue-600 cursor-pointer">Regístrate</a>
+          No tienes cuenta? <a href="#" onClick={(e: any) => { e.preventDefault(); window.location.hash = '/register'; }} className="text-blue-600 cursor-pointer">Regístrate</a>
         </p>
       </div>
     </div>
