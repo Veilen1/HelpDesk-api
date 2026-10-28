@@ -9,9 +9,8 @@ let cachedServer: Express;
 
 export function configureApp(app: INestApplication): void {
   const allowedOrigins = [
+    'https://helpdeskclient.vercel.app',
     'http://localhost:3000',
-    'https://help-desk-client-6dsnv1ebo.veilen1s-projects.vercel.app',
-    'https://helpdeskclient-6dsnv1ebo.veilen1s-projects.vercel.app',
   ];
 
   // Configurar CORS explícitamente con las opciones necesarias
@@ -19,7 +18,7 @@ export function configureApp(app: INestApplication): void {
     origin: (origin: string | boolean, callback: (err: Error | null, success?: boolean) => void): void => {
       // Permitir requests sin origin (como Postman o mobile apps)
       if (!origin) return callback(null, true);
-      // Verificar si el origin está en la lista permitida (cast a string para indexOf)
+      // Verificar si el origin está en la lista permitida
       if (typeof origin === 'string' && allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
