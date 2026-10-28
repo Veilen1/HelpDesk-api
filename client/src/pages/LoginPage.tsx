@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { auth } from '../utils/api';
 
@@ -6,6 +7,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +58,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="mt-6 text-sm text-center">
-          No tienes cuenta? <a href="#" onClick={(e: any) => { e.preventDefault(); window.location.hash = '/register'; }} className="text-blue-600 cursor-pointer">Regístrate</a>
+          No tienes cuenta? <a onClick={(e: any) => { e.preventDefault(); navigate('/register'); }} className="text-blue-600 cursor-pointer">Regístrate</a>
         </p>
       </div>
     </div>
