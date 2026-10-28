@@ -5,3 +5,4 @@ export default async function handler(req: Request, res: Response) {
   const server = await createNestServer();
   return server(req, res);
 }
+

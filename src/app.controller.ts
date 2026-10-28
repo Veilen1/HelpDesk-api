@@ -16,4 +16,14 @@ export class AppController {
   getHello() {
     return this.appService.getHello();
   }
+
+  @Get('health')
+  @ApiOperation({ summary: 'Health check del servicio y base de datos' })
+  @ApiResponse({
+    status: 200,
+    description: 'Estado de salud del servicio y de la base de datos',
+  })
+  getHealth() {
+    return this.appService.getHealth();
+  }
 }
