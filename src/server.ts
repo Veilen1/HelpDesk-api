@@ -8,39 +8,52 @@ import { AppModule } from './app.module.js';
 let cachedServer: Express;
 
 export function configureApp(app: INestApplication): void {
+  // Orígenes permitidos. Se puede ampliar con la variable CORS_ORIGINS
+  // (lista separada por comas) sin recompilar.
+  const envOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   const allowedOrigins = [
     'https://helpdeskclient.vercel.app',
+    'https://help-desk-api-inky.vercel.app',
     'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:4173',
+    ...envOrigins,
   ];
 
-  // Configurar CORS explícitamente con las opciones necesarias
-  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const origin = req.headers.origin;
-    if (origin && allowedOrigins.indexOf(origin) !== -1) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
-    }
-    next();
-  });
+  // Previews de Vercel de ESTOS proyectos (p. ej. helpdeskclient-abc123.vercel.app)
+  const allowedVercelPrefixes = ['helpdeskclient', 'help-desk-api-inky'];
 
+  const isAllowedOrigin = (origin: string): boolean => {
+    if (allowedOrigins.includes(origin)) return true;
+    try {
+      const url = new URL(origin);
+      return (
+        url.protocol === 'https:' &&
+        url.hostname.endsWith('.vercel.app') &&
+        allowedVercelPrefixes.some((prefix) => url.hostname.startsWith(prefix))
+      );
+    } catch {
+      return false;
+    }
+  };
+
+  // CORS manejado por el paquete `cors` de Nest. Responde los preflight
+  // (OPTIONS) con 204 y los headers correctos; no genera redirecciones.
   app.enableCors({
-    origin: (origin: string | boolean, callback: (err: Error | null, success?: boolean) => void): void => {
-      // Permitir requests sin origin (como Postman o mobile apps)
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ): void => {
+      // Requests sin Origin (Postman, curl, apps móviles)
       if (!origin) return callback(null, true);
-      // Verificar si el origin está en la lista permitida
-      if (typeof origin === 'string' && allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        callback(null, true);
-      }
+      callback(null, isAllowedOrigin(origin));
     },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    allowedHeaders: 'Content-Type, Authorization, X-Requested-With, Accept',
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
     credentials: true,
   });
 

@@ -14,13 +14,13 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const { token } = await auth.login(email, password);
-      localStorage.setItem('token', token);
-      navigate('/dashboard');
+      await auth.login(email, password);
+      // Recarga para que App vuelva a validar la sesión con el token nuevo
+      window.location.assign('/');
     } catch (e: any) {
       setError(e.message);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -58,7 +58,16 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="mt-6 text-sm text-center">
-          No tienes cuenta? <button onClick={(e: any) => { e.preventDefault(); navigate('/register'); }} className="text-blue-600 cursor-pointer">Regístrate</button>
+          No tienes cuenta?{' '}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/register');
+            }}
+            className="text-blue-600 cursor-pointer"
+          >
+            Regístrate
+          </button>
         </p>
       </div>
     </div>

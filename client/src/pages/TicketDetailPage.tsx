@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { auth, tickets, comments } from '../utils/api';
-import type { Ticket, Comment } from '../utils/api';
+import { useNavigate, useParams } from 'react-router-dom';
+import { auth, tickets, comments, users } from '../utils/api';
+import type { Ticket, Comment, User } from '../utils/api';
 
 export default function TicketDetailPage() {
-  const params = new URLSearchParams(window.location.hash);
-  const ticketId = params.get('id') || '';
+  const { id: ticketId = '' } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [commentsList, setComments] = useState<Comment[]>([]);
@@ -12,8 +13,11 @@ export default function TicketDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [assignMode, setAssignMode] = useState(false);
-  const [agentOptions, setAgentOptions] = useState<string[]>([]);
-  const [user] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
+  const [agentOptions, setAgentOptions] = useState<User[]>([]);
+  const [selectedAgent, setSelectedAgent] = useState('');
+  const [user] = useState<User | Record<string, never>>(() =>
+    JSON.parse(localStorage.getItem('user') || '{}'),
+  );
 
   useEffect(() => {
     async function loadData() {
@@ -29,40 +33,49 @@ export default function TicketDetailPage() {
       }
       setLoading(false);
     }
-    loadData();
+    if (ticketId) loadData();
+    else setLoading(false);
   }, [ticketId]);
 
   useEffect(() => {
     async function loadAgents() {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_BASE || 'https://help-desk-api-rho.vercel.app'}/api/users`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        });
-        if (res.ok) {
-          const users = await res.json();
-          setAgentOptions(users.filter((u: any) => u.role === 'AGENT').map((u: any) => u.email));
-        }
+        const all = await users.list();
+        setAgentOptions(all.filter((u) => u.role === 'AGENT'));
       } catch (e) {
         console.error('Error cargando agentes:', e);
       }
     }
-    if (user.role === 'ADMIN') loadAgents();
-  }, [user.role, ticketId]);
+    if ((user as User).role === 'ADMIN') loadAgents();
+  }, [user]);
 
-  if (loading) return <p>Cargando ticket...</p>;
-  if (error) return <p className="text-red-600">Error: {error}</p>;
-  if (!ticket) return <p>Ticket no encontrado</p>;
+  const handleLogout = async () => {
+    await auth.logout();
+    window.location.assign('/login');
+  };
+
+  if (loading) return <p className="p-6">Cargando ticket...</p>;
+  if (error) return <p className="p-6 text-red-600">Error: {error}</p>;
+  if (!ticket) return <p className="p-6">Ticket no encontrado</p>;
+
+  const role = (user as User).role;
+  const canManage = role === 'ADMIN' || role === 'AGENT';
 
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white p-4 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <h1 className="text-xl font-bold">HelpDesk API</h1>
+          <button
+            onClick={() => navigate('/')}
+            className="text-xl font-bold text-left"
+          >
+            ← HelpDesk API
+          </button>
           <div className="flex items-center gap-4">
             <span className="text-gray-600">
-              Bienvenido, {user.name || 'Usuario'}
+              Bienvenido, {(user as User).name || 'Usuario'}
             </span>
-            <button onClick={() => auth.logout()} className="text-sm text-blue-600 hover-underline">
+            <button onClick={handleLogout} className="text-sm text-blue-600 hover-underline">
               Cerrar sesión
             </button>
           </div>
@@ -75,44 +88,62 @@ export default function TicketDetailPage() {
           <p className="text-gray-500 mb-4 line-clamp-3">{ticket.description}</p>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="font-medium">Estado:</span>
-              <span className={ticket.status === 'OPEN' ? 'text-green-600' : ticket.status === 'RESOLVED' ? 'text-yellow-600' : 'text-red-600'}>
+              <span className="font-medium">Estado:</span>{' '}
+              <span
+                className={
+                  ticket.status === 'OPEN'
+                    ? 'text-green-600'
+                    : ticket.status === 'RESOLVED'
+                      ? 'text-yellow-600'
+                      : 'text-red-600'
+                }
+              >
                 {ticket.status}
               </span>
             </div>
             <div>
-              <span className="font-medium">Prioridad:</span>
+              <span className="font-medium">Prioridad:</span>{' '}
               <span className="text-blue-600 font-medium">{ticket.priority}</span>
             </div>
             <div>
-              <span className="font-medium">Creado:</span>
+              <span className="font-medium">Creado:</span>{' '}
               <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
             </div>
-            {ticket.agentId && (
+            {ticket.assignedToId && (
               <div>
-                <span className="font-medium">Asignado a:</span>
-                <span className="text-orange-600">{ticket.agentId}</span>
+                <span className="font-medium">Asignado a:</span>{' '}
+                <span className="text-orange-600">{ticket.assignedToId}</span>
               </div>
             )}
           </div>
         </div>
 
-        {user.role === 'ADMIN' || (user.role === 'AGENT' && ticket.userId !== 'current-user') ? (
-          assignMode ? (
+        {canManage &&
+          (assignMode ? (
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">Reasignar a agente</label>
               <select
-                value={agentOptions[0] || ''}
-                onChange={(e) => console.log('Seleccionado:', e.target.value)}
+                value={selectedAgent}
+                onChange={(e) => setSelectedAgent(e.target.value)}
                 className="w-full px-3 py-2 border rounded-md"
               >
                 <option value="">-- Seleccionar agente --</option>
-                {agentOptions.map((email) => <option key={email} value={email}>{email}</option>)}
+                {agentOptions.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.email}
+                  </option>
+                ))}
               </select>
               <button
                 onClick={() => {
-                  tickets.assign(ticketId, agentOptions[0] || '').then(() => window.alert('Ticket asignado')).catch(() => alert('Error'));
-                  setAssignMode(false);
+                  if (!selectedAgent) return;
+                  tickets
+                    .assign(ticketId, selectedAgent)
+                    .then(() => {
+                      window.alert('Ticket asignado');
+                      setAssignMode(false);
+                    })
+                    .catch((e: any) => alert(e.message));
                 }}
                 className="mt-2 px-4 py-2 bg-orange-600 text-white rounded-md font-medium hover:bg-orange-700 transition-colors"
               >
@@ -126,8 +157,7 @@ export default function TicketDetailPage() {
             >
               Reasignar ticket
             </button>
-          )
-        ) : null}
+          ))}
 
         <div>
           <h3 className="text-xl font-bold mb-3">Comentarios ({commentsList.length})</h3>
@@ -135,13 +165,17 @@ export default function TicketDetailPage() {
             <div className="space-y-2">
               {commentsList.map((comment) => (
                 <div key={comment.id} className="bg-gray-50 rounded-md p-3 mb-3">
-                  <p className="font-medium">{comment.userId}: {comment.text}</p>
-                  <p className="text-xs text-gray-500">{new Date(comment.createdAt).toLocaleTimeString()}</p>
+                  <p className="font-medium">
+                    {comment.author?.name || comment.authorId}: {comment.content}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(comment.createdAt).toLocaleTimeString()}
+                  </p>
                 </div>
               ))}
             </div>
           )}
-          {user.role === 'ADMIN' || user.role === 'AGENT' || ticket.userId === user.id ? (
+          {canManage || ticket.creatorId === (user as User).id ? (
             <div className="mt-4">
               <textarea
                 value={newComment}
@@ -154,10 +188,13 @@ export default function TicketDetailPage() {
               <button
                 onClick={() => {
                   if (newComment.trim()) {
-                    comments.create(ticketId, newComment).then((newCommentData) => {
-                      setNewComment('');
-                      setComments(prev => [...prev, newCommentData]);
-                    }).catch((e: any) => alert(e.message));
+                    comments
+                      .create(ticketId, newComment)
+                      .then((created) => {
+                        setNewComment('');
+                        setComments((prev) => [...prev, created]);
+                      })
+                      .catch((e: any) => alert(e.message));
                   }
                 }}
                 className="px-4 py-2 bg-green-600 text-white rounded-md font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
@@ -172,7 +209,7 @@ export default function TicketDetailPage() {
         <div>
           <h3 className="text-xl font-bold mt-6">Historial de auditoría</h3>
           <button
-            onClick={() => window.location.hash = `/audit/${ticketId}`}
+            onClick={() => navigate(`/audit/${ticketId}`)}
             className="mb-3 inline-block px-4 py-2 bg-purple-600 text-white rounded-md font-medium hover:bg-purple-700 transition-colors"
           >
             Ver auditoría

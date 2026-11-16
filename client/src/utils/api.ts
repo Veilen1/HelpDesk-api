@@ -1,4 +1,8 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://help-desk-api-inky.vercel.app';
+const API_BASE = (
+  import.meta.env.VITE_API_BASE || 'https://help-desk-api-inky.vercel.app'
+).replace(/\/+$/, '');
+
+export { API_BASE };
 
 export interface User {
   id: string;
@@ -15,153 +19,198 @@ export interface Ticket {
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   createdAt: string;
   updatedAt: string;
-  userId: string;
-  agentId?: string;
+  creatorId: string;
+  assignedToId?: string | null;
 }
 
 export interface Comment {
   id: string;
-  text: string;
+  content: string;
   createdAt: string;
-  userId: string;
+  authorId: string;
+  author?: User;
+}
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  details?: string | null;
+  createdAt: string;
+  userId?: string | null;
+  user?: User | null;
+}
+
+export interface PaginatedTickets {
+  data: Ticket[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, options);
+  if (!res.ok) {
+    let message = `Error ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body?.message) {
+        message = Array.isArray(body.message)
+          ? body.message.join(', ')
+          : body.message;
+      }
+    } catch {
+      // respuesta sin JSON: se deja el mensaje por defecto
+    }
+    throw new Error(message);
+  }
+  return res.json() as Promise<T>;
+}
+
+function authHeaders(json = false): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (json) headers['Content-Type'] = 'application/json';
+  const token = localStorage.getItem('token');
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  user: User;
 }
 
 export const auth = {
-  async register(name: string, email: string, password: string): Promise<User> {
-    const res = await fetch(`${API_BASE}/api/auth/register`, {
+  async register(
+    name: string,
+    email: string,
+    password: string,
+  ): Promise<AuthResponse> {
+    const data = await request<AuthResponse>('/api/auth/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(true),
       body: JSON.stringify({ name, email, password }),
     });
-    if (!res.ok) throw new Error('Error en el registro');
-    return res.json();
+    saveSession(data);
+    return data;
   },
 
-  async login(email: string, password: string): Promise<{ user: User; token: string }> {
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
+  async login(email: string, password: string): Promise<AuthResponse> {
+    const data = await request<AuthResponse>('/api/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(true),
       body: JSON.stringify({ email, password }),
     });
-    if (!res.ok) throw new Error('Error en el login');
-    return res.json();
+    saveSession(data);
+    return data;
   },
 
   async me(): Promise<User> {
-    const res = await fetch(`${API_BASE}/api/auth/me`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-    });
-    if (!res.ok) throw new Error('No autenticado');
-    return res.json();
+    return request<User>('/api/auth/me', { headers: authHeaders() });
   },
 
   async logout() {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
   },
 };
 
+function saveSession(data: AuthResponse) {
+  localStorage.setItem('token', data.accessToken);
+  localStorage.setItem('user', JSON.stringify(data.user));
+}
+
 export const tickets = {
-  async list(page = 1, limit = 20, status?: string, priority?: string) {
-    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  async list(
+    page = 1,
+    limit = 20,
+    status?: string,
+    priority?: string,
+  ): Promise<PaginatedTickets> {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
     if (status) params.append('status', status);
     if (priority) params.append('priority', priority);
-    const res = await fetch(`${API_BASE}/api/tickets?${params}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    return request<PaginatedTickets>(`/api/tickets?${params}`, {
+      headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Error al obtener tickets');
-    return res.json();
   },
 
   async create(title: string, description: string): Promise<Ticket> {
-    const res = await fetch(`${API_BASE}/api/tickets`, {
+    return request<Ticket>('/api/tickets', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
+      headers: authHeaders(true),
       body: JSON.stringify({ title, description }),
     });
-    if (!res.ok) throw new Error('Error al crear ticket');
-    return res.json();
   },
 
   async get(id: string): Promise<Ticket> {
-    const res = await fetch(`${API_BASE}/api/tickets/${id}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-    });
-    if (!res.ok) throw new Error('Error al obtener ticket');
-    return res.json();
+    return request<Ticket>(`/api/tickets/${id}`, { headers: authHeaders() });
   },
 
-  async update(id: string, data: { title?: string; description?: string; status?: string; priority?: string }) {
-    const res = await fetch(`${API_BASE}/api/tickets/${id}`, {
+  async update(
+    id: string,
+    data: {
+      title?: string;
+      description?: string;
+      status?: string;
+      priority?: string;
+    },
+  ): Promise<Ticket> {
+    return request<Ticket>(`/api/tickets/${id}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
+      headers: authHeaders(true),
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Error al actualizar ticket');
-    return res.json();
   },
 
-  async changeStatus(id: string, status: string) {
-    const res = await fetch(`${API_BASE}/api/tickets/${id}/status`, {
+  async changeStatus(id: string, status: string): Promise<Ticket> {
+    return request<Ticket>(`/api/tickets/${id}/status`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
+      headers: authHeaders(true),
       body: JSON.stringify({ status }),
     });
-    if (!res.ok) throw new Error('Error al cambiar estado');
-    return res.json();
   },
 
-  async assign(id: string, agentId: string) {
-    const res = await fetch(`${API_BASE}/api/tickets/${id}/assign`, {
+  async assign(id: string, agentId: string): Promise<Ticket> {
+    return request<Ticket>(`/api/tickets/${id}/assign`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
+      headers: authHeaders(true),
       body: JSON.stringify({ agentId }),
     });
-    if (!res.ok) throw new Error('Error al asignar ticket');
-    return res.json();
   },
 };
 
 export const comments = {
   async list(ticketId: string): Promise<Comment[]> {
-    const res = await fetch(`${API_BASE}/api/tickets/${ticketId}/comments`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    return request<Comment[]>(`/api/tickets/${ticketId}/comments`, {
+      headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Error al obtener comentarios');
-    return res.json();
   },
 
-  async create(ticketId: string, text: string): Promise<Comment> {
-    const res = await fetch(`${API_BASE}/api/tickets/${ticketId}/comments`, {
+  async create(ticketId: string, content: string): Promise<Comment> {
+    return request<Comment>(`/api/tickets/${ticketId}/comments`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-      body: JSON.stringify({ text }),
+      headers: authHeaders(true),
+      body: JSON.stringify({ content }),
     });
-    if (!res.ok) throw new Error('Error al crear comentario');
-    return res.json();
   },
 };
 
 export const audit = {
-  async list(ticketId: string) {
-    const res = await fetch(`${API_BASE}/api/tickets/${ticketId}/audit`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+  async list(ticketId: string): Promise<AuditLog[]> {
+    return request<AuditLog[]>(`/api/tickets/${ticketId}/audit`, {
+      headers: authHeaders(),
     });
-    if (!res.ok) throw new Error('Error al obtener auditoría');
-    return res.json();
+  },
+};
+
+export const users = {
+  async list(): Promise<User[]> {
+    return request<User[]>('/api/users', { headers: authHeaders() });
   },
 };

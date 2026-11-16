@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { auth } from '../utils/api';
 
 export default function RegisterPage() {
@@ -7,19 +8,20 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const user = await auth.register(name, email, password);
-      localStorage.setItem('user', JSON.stringify(user));
-      window.location.hash = '/login';
+      // El API ya devuelve la sesión; recargamos para entrar al dashboard
+      await auth.register(name, email, password);
+      window.location.assign('/');
     } catch (e: any) {
       setError(e.message);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -54,6 +56,7 @@ export default function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)}
               type="password"
               required
+              minLength={6}
               className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -66,7 +69,16 @@ export default function RegisterPage() {
           </button>
         </form>
         <p className="mt-6 text-sm text-center">
-          Ya tienes cuenta? <a href="#" onClick={(e: any) => { e.preventDefault(); window.location.hash = '/login'; }} className="text-blue-600 cursor-pointer">Inicia sesión</a>
+          Ya tienes cuenta?{' '}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/login');
+            }}
+            className="text-blue-600 cursor-pointer"
+          >
+            Inicia sesión
+          </button>
         </p>
       </div>
     </div>
