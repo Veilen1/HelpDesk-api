@@ -4,23 +4,32 @@ const API_BASE = (
 
 export { API_BASE };
 
+export type Role = 'CUSTOMER' | 'AGENT' | 'ADMIN';
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
 export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'CUSTOMER' | 'AGENT' | 'ADMIN';
+  role: Role;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Ticket {
   id: string;
   title: string;
   description: string;
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  status: TicketStatus;
+  priority: TicketPriority;
   createdAt: string;
   updatedAt: string;
   creatorId: string;
   assignedToId?: string | null;
+  creator?: User | null;
+  assignedTo?: User | null;
+  _count?: { comments: number };
 }
 
 export interface Comment {
@@ -50,6 +59,18 @@ export interface PaginatedTickets {
   };
 }
 
+export interface AuthResponse {
+  accessToken: string;
+  user: User;
+}
+
+export interface UpdateUserPayload {
+  name?: string;
+  email?: string;
+  password?: string;
+  role?: Role;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, options);
   if (!res.ok) {
@@ -62,7 +83,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
           : body.message;
       }
     } catch {
-      // respuesta sin JSON: se deja el mensaje por defecto
+      // respuesta sin JSON
+    }
+    if (res.status === 401) {
+      clearSession();
     }
     throw new Error(message);
   }
@@ -77,88 +101,98 @@ function authHeaders(json = false): Record<string, string> {
   return headers;
 }
 
-export interface AuthResponse {
-  accessToken: string;
-  user: User;
-}
-
-export const auth = {
-  async register(
-    name: string,
-    email: string,
-    password: string,
-  ): Promise<AuthResponse> {
-    const data = await request<AuthResponse>('/api/auth/register', {
-      method: 'POST',
-      headers: authHeaders(true),
-      body: JSON.stringify({ name, email, password }),
-    });
-    saveSession(data);
-    return data;
-  },
-
-  async login(email: string, password: string): Promise<AuthResponse> {
-    const data = await request<AuthResponse>('/api/auth/login', {
-      method: 'POST',
-      headers: authHeaders(true),
-      body: JSON.stringify({ email, password }),
-    });
-    saveSession(data);
-    return data;
-  },
-
-  async me(): Promise<User> {
-    return request<User>('/api/auth/me', { headers: authHeaders() });
-  },
-
-  async logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-  },
-};
-
-function saveSession(data: AuthResponse) {
+export function saveSession(data: AuthResponse) {
   localStorage.setItem('token', data.accessToken);
   localStorage.setItem('user', JSON.stringify(data.user));
 }
 
+export function clearSession() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+}
+
+export function getStoredUser(): User | null {
+  const raw = localStorage.getItem('user');
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as User;
+  } catch {
+    return null;
+  }
+}
+
+export const auth = {
+  register(name: string, email: string, password: string): Promise<AuthResponse> {
+    return request<AuthResponse>('/api/auth/register', {
+      method: 'POST',
+      headers: authHeaders(true),
+      body: JSON.stringify({ name, email, password }),
+    });
+  },
+
+  login(email: string, password: string): Promise<AuthResponse> {
+    return request<AuthResponse>('/api/auth/login', {
+      method: 'POST',
+      headers: authHeaders(true),
+      body: JSON.stringify({ email, password }),
+    });
+  },
+
+  me(): Promise<User> {
+    return request<User>('/api/auth/me', { headers: authHeaders() });
+  },
+
+  logout() {
+    clearSession();
+  },
+};
+
+export interface TicketFilters {
+  page?: number;
+  limit?: number;
+  status?: TicketStatus | '';
+  priority?: TicketPriority | '';
+  assignedToId?: string;
+}
+
 export const tickets = {
-  async list(
-    page = 1,
-    limit = 20,
-    status?: string,
-    priority?: string,
-  ): Promise<PaginatedTickets> {
+  list(filters: TicketFilters = {}): Promise<PaginatedTickets> {
+    const { page = 1, limit = 20, status, priority, assignedToId } = filters;
     const params = new URLSearchParams({
       page: String(page),
       limit: String(limit),
     });
-    if (status) params.append('status', status);
-    if (priority) params.append('priority', priority);
+    if (status) params.set('status', status);
+    if (priority) params.set('priority', priority);
+    if (assignedToId) params.set('assignedToId', assignedToId);
     return request<PaginatedTickets>(`/api/tickets?${params}`, {
       headers: authHeaders(),
     });
   },
 
-  async create(title: string, description: string): Promise<Ticket> {
+  create(data: {
+    title: string;
+    description: string;
+    priority?: TicketPriority;
+  }): Promise<Ticket> {
     return request<Ticket>('/api/tickets', {
       method: 'POST',
       headers: authHeaders(true),
-      body: JSON.stringify({ title, description }),
+      body: JSON.stringify(data),
     });
   },
 
-  async get(id: string): Promise<Ticket> {
+  get(id: string): Promise<Ticket> {
     return request<Ticket>(`/api/tickets/${id}`, { headers: authHeaders() });
   },
 
-  async update(
+  update(
     id: string,
     data: {
       title?: string;
       description?: string;
-      status?: string;
-      priority?: string;
+      priority?: TicketPriority;
+      status?: TicketStatus;
     },
   ): Promise<Ticket> {
     return request<Ticket>(`/api/tickets/${id}`, {
@@ -168,7 +202,7 @@ export const tickets = {
     });
   },
 
-  async changeStatus(id: string, status: string): Promise<Ticket> {
+  changeStatus(id: string, status: TicketStatus): Promise<Ticket> {
     return request<Ticket>(`/api/tickets/${id}/status`, {
       method: 'PATCH',
       headers: authHeaders(true),
@@ -176,23 +210,23 @@ export const tickets = {
     });
   },
 
-  async assign(id: string, agentId: string): Promise<Ticket> {
+  assign(id: string, assignedToId: string): Promise<Ticket> {
     return request<Ticket>(`/api/tickets/${id}/assign`, {
       method: 'PATCH',
       headers: authHeaders(true),
-      body: JSON.stringify({ agentId }),
+      body: JSON.stringify({ assignedToId }),
     });
   },
 };
 
 export const comments = {
-  async list(ticketId: string): Promise<Comment[]> {
+  list(ticketId: string): Promise<Comment[]> {
     return request<Comment[]>(`/api/tickets/${ticketId}/comments`, {
       headers: authHeaders(),
     });
   },
 
-  async create(ticketId: string, content: string): Promise<Comment> {
+  create(ticketId: string, content: string): Promise<Comment> {
     return request<Comment>(`/api/tickets/${ticketId}/comments`, {
       method: 'POST',
       headers: authHeaders(true),
@@ -202,7 +236,7 @@ export const comments = {
 };
 
 export const audit = {
-  async list(ticketId: string): Promise<AuditLog[]> {
+  list(ticketId: string): Promise<AuditLog[]> {
     return request<AuditLog[]>(`/api/tickets/${ticketId}/audit`, {
       headers: authHeaders(),
     });
@@ -210,7 +244,19 @@ export const audit = {
 };
 
 export const users = {
-  async list(): Promise<User[]> {
+  list(): Promise<User[]> {
     return request<User[]>('/api/users', { headers: authHeaders() });
+  },
+
+  get(id: string): Promise<User> {
+    return request<User>(`/api/users/${id}`, { headers: authHeaders() });
+  },
+
+  update(id: string, data: UpdateUserPayload): Promise<User> {
+    return request<User>(`/api/users/${id}`, {
+      method: 'PATCH',
+      headers: authHeaders(true),
+      body: JSON.stringify(data),
+    });
   },
 };

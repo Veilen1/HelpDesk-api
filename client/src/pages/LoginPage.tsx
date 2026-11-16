@@ -1,74 +1,101 @@
-import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { auth } from '../utils/api';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
+import { ErrorMessage } from '../components/ui';
+
+interface LocationState {
+  from?: string;
+}
 
 export default function LoginPage() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = (location.state as LocationState | null)?.from || '/';
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError(null);
+    setLoading(true);
     try {
-      await auth.login(email, password);
-      // Recarga para que App vuelva a validar la sesión con el token nuevo
-      window.location.assign('/');
-    } catch (e: any) {
-      setError(e.message);
+      await login(email.trim(), password);
+      navigate(redirectTo, { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo iniciar sesión');
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-      <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
-        <h2 className="text-2xl font-bold mb-6 text-center">Iniciar sesión</h2>
-        {error && <p className="text-red-600 mb-4 text-center">{error}</p>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Correo electrónico</label>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Contraseña</label>
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Iniciando sesión...' : 'Entrar'}
-          </button>
-        </form>
-        <p className="mt-6 text-sm text-center">
-          No tienes cuenta?{' '}
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              navigate('/register');
-            }}
-            className="text-blue-600 cursor-pointer"
-          >
-            Regístrate
-          </button>
-        </p>
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
+      <div className="w-full max-w-md">
+        <div className="mb-6 text-center">
+          <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-lg font-bold text-white">
+            HD
+          </span>
+          <h1 className="text-2xl font-bold text-slate-900">HelpDesk</h1>
+          <p className="mt-1 text-sm text-slate-500">Accedé para gestionar tus tickets</p>
+        </div>
+
+        <div className="card p-6 sm:p-8">
+          <h2 className="mb-5 text-lg font-semibold text-slate-900">Iniciar sesión</h2>
+
+          {error && (
+            <div className="mb-4">
+              <ErrorMessage message={error} />
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="label" htmlFor="email">
+                Correo electrónico
+              </label>
+              <input
+                id="email"
+                type="email"
+                className="input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="label" htmlFor="password">
+                Contraseña
+              </label>
+              <input
+                id="password"
+                type="password"
+                className="input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                minLength={6}
+                required
+              />
+            </div>
+
+            <button type="submit" className="btn-primary w-full" disabled={loading}>
+              {loading ? 'Iniciando sesión...' : 'Entrar'}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-slate-600">
+            ¿No tenés cuenta?{' '}
+            <Link to="/register" className="font-medium text-blue-600 hover:underline">
+              Registrate
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,127 +1,245 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { auth, tickets } from '../utils/api';
-import type { Ticket } from '../utils/api';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
+import { tickets } from '../utils/api';
+import type { Ticket, TicketFilters, TicketPriority, TicketStatus } from '../utils/api';
+import {
+  EmptyState,
+  ErrorMessage,
+  PRIORITY_OPTIONS,
+  PriorityBadge,
+  Spinner,
+  STATUS_OPTIONS,
+  StatusBadge,
+} from '../components/ui';
+
+const PAGE_SIZE = 12;
 
 export default function DashboardPage() {
-  const [ticketList, setTicketList] = useState<Ticket[]>([]);
+  const { user, canManage } = useAuth();
+
+  const [status, setStatus] = useState<TicketStatus | ''>('');
+  const [priority, setPriority] = useState<TicketPriority | ''>('');
+  const [onlyMine, setOnlyMine] = useState(false);
+  const [page, setPage] = useState(1);
+
+  const [items, setItems] = useState<Ticket[]>([]);
+  const [meta, setMeta] = useState({ total: 0, page: 1, limit: PAGE_SIZE, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+
+  const filters = useMemo<TicketFilters>(
+    () => ({
+      page,
+      limit: PAGE_SIZE,
+      status,
+      priority,
+      assignedToId: onlyMine ? user?.id : undefined,
+    }),
+    [page, status, priority, onlyMine, user?.id],
+  );
 
   useEffect(() => {
-    async function loadTickets() {
-      try {
-        const { data } = await tickets.list(1, 20);
-        setTicketList(data);
-      } catch (e: any) {
-        setError(e.message);
-      }
-      setLoading(false);
-    }
-    loadTickets();
-  }, []);
+    let active = true;
+    setLoading(true);
+    setError(null);
 
-  const handleLogout = async () => {
-    await auth.logout();
-    window.location.assign('/login');
+    tickets
+      .list(filters)
+      .then((result) => {
+        if (!active) return;
+        setItems(result.data);
+        setMeta(result.meta);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : 'No se pudieron cargar los tickets');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [filters]);
+
+  const resetFilters = () => {
+    setStatus('');
+    setPriority('');
+    setOnlyMine(false);
+    setPage(1);
   };
 
-  if (loading) return <p className="p-6">Cargando...</p>;
-  if (error) return <p className="p-6 text-red-600">Error: {error}</p>;
+  const hasFilters = status !== '' || priority !== '' || onlyMine;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white p-4 shadow-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <h1 className="text-xl font-bold">HelpDesk API</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-600">
-              Bienvenido, {JSON.parse(localStorage.getItem('user') || '{}').name || 'Usuario'}
-            </span>
-            <button onClick={handleLogout} className="text-sm text-blue-600 hover-underline">
-              Cerrar sesión
-            </button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Tickets</h1>
+          <p className="text-sm text-slate-500">
+            {user?.role === 'CUSTOMER'
+              ? 'Tus solicitudes de soporte'
+              : 'Todos los tickets del sistema'}
+          </p>
         </div>
-      </nav>
+        <Link to="/tickets/new" className="btn-primary">
+          + Nuevo ticket
+        </Link>
+      </div>
 
-      <main className="max-w-7xl mx-auto p-6">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-4">Tickets</h2>
-          <div className="flex gap-2 mb-4">
-            <select
-              onChange={(e) => console.log('Filtrar por:', e.target.value)}
-              className="px-3 py-2 border rounded-md"
-            >
-              <option value="">Todos</option>
-              <option value="OPEN">Abiertos</option>
-              <option value="IN_PROGRESS">En progreso</option>
-              <option value="RESOLVED">Resueltos</option>
-              <option value="CLOSED">Cerrados</option>
-            </select>
-            <select
-              onChange={(e) => console.log('Filtrar por prioridad:', e.target.value)}
-              className="px-3 py-2 border rounded-md"
-            >
-              <option value="">Todas</option>
-              <option value="LOW">Baja</option>
-              <option value="MEDIUM">Media</option>
-              <option value="HIGH">Alta</option>
-              <option value="URGENT">Urgente</option>
-            </select>
-          </div>
+      <div className="card flex flex-wrap items-end gap-3 p-4">
+        <div className="min-w-[160px]">
+          <label className="label" htmlFor="filter-status">
+            Estado
+          </label>
+          <select
+            id="filter-status"
+            className="input"
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value as TicketStatus | '');
+              setPage(1);
+            }}
+          >
+            <option value="">Todos</option>
+            {STATUS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {ticketList.length === 0 ? (
-          <p className="text-gray-500">No hay tickets para mostrar.</p>
-        ) : (
+        <div className="min-w-[160px]">
+          <label className="label" htmlFor="filter-priority">
+            Prioridad
+          </label>
+          <select
+            id="filter-priority"
+            className="input"
+            value={priority}
+            onChange={(e) => {
+              setPriority(e.target.value as TicketPriority | '');
+              setPage(1);
+            }}
+          >
+            <option value="">Todas</option>
+            {PRIORITY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {canManage && (
+          <label className="flex items-center gap-2 pb-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              checked={onlyMine}
+              onChange={(e) => {
+                setOnlyMine(e.target.checked);
+                setPage(1);
+              }}
+            />
+            Solo asignados a mí
+          </label>
+        )}
+
+        {hasFilters && (
+          <button type="button" className="btn-secondary ml-auto" onClick={resetFilters}>
+            Limpiar filtros
+          </button>
+        )}
+      </div>
+
+      {error && <ErrorMessage message={error} />}
+
+      {loading ? (
+        <Spinner label="Cargando tickets..." />
+      ) : items.length === 0 ? (
+        <EmptyState
+          title="No hay tickets para mostrar"
+          description={
+            hasFilters
+              ? 'Probá cambiando o limpiando los filtros.'
+              : 'Cuando se cree un ticket aparecerá acá.'
+          }
+          action={
+            hasFilters ? (
+              <button type="button" className="btn-secondary" onClick={resetFilters}>
+                Limpiar filtros
+              </button>
+            ) : (
+              <Link to="/tickets/new" className="btn-primary">
+                Crear el primero
+              </Link>
+            )
+          }
+        />
+      ) : (
+        <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {ticketList.map((ticket) => (
-              <div
+            {items.map((ticket) => (
+              <Link
                 key={ticket.id}
-                className="bg-white rounded-lg shadow p-5 hover:shadow-xl transition-shadow"
+                to={`/ticket/${ticket.id}`}
+                className="card flex flex-col p-5 transition-shadow hover:shadow-md"
               >
-                <h3 className="text-lg font-medium mb-2">{ticket.title}</h3>
-                <p className="text-sm text-gray-500 line-clamp-2">{ticket.description}</p>
-                <div className="mt-3 text-sm">
-                  <span className="mr-2">
-                    <span
-                      className={`font-medium ${
-                        ticket.status === 'OPEN'
-                          ? 'text-green-600'
-                          : ticket.status === 'RESOLVED'
-                            ? 'text-yellow-600'
-                            : 'text-red-600'
-                      }`}
-                    >
-                      {ticket.status}
-                    </span>
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <h2 className="line-clamp-2 font-semibold text-slate-900">{ticket.title}</h2>
+                  <PriorityBadge priority={ticket.priority} />
+                </div>
+
+                <p className="mb-4 line-clamp-3 flex-1 text-sm text-slate-500">
+                  {ticket.description}
+                </p>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                  <StatusBadge status={ticket.status} />
+                  <span className="text-xs text-slate-500">
+                    {new Date(ticket.createdAt).toLocaleDateString()}
                   </span>
-                  <span className="mr-2">P: {ticket.priority}</span>
-                  <span>{new Date(ticket.createdAt).toLocaleDateString()}</span>
                 </div>
-                <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={() => navigate(`/ticket/${ticket.id}`)}
-                    className="text-xs text-blue-600 hover-underline"
-                  >
-                    Ver detalles
-                  </button>
-                  {ticket.assignedToId && (
-                    <button
-                      onClick={() => navigate(`/ticket/${ticket.id}`)}
-                      className="text-xs text-orange-600 hover-underline"
-                    >
-                      Reasignar
-                    </button>
-                  )}
-                </div>
-              </div>
+
+                {ticket.assignedTo && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    Asignado a <span className="font-medium">{ticket.assignedTo.name}</span>
+                  </p>
+                )}
+              </Link>
             ))}
           </div>
-        )}
-      </main>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-slate-500">
+              {meta.total} ticket{meta.total === 1 ? '' : 's'} · página {meta.page} de{' '}
+              {meta.totalPages}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={meta.page <= 1 || loading}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+              >
+                ← Anterior
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={meta.page >= meta.totalPages || loading}
+                onClick={() => setPage((current) => current + 1)}
+              >
+                Siguiente →
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

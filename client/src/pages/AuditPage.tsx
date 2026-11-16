@@ -1,86 +1,89 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { auth, audit } from '../utils/api';
+import { Link, useParams } from 'react-router-dom';
+import { EmptyState, ErrorMessage, Spinner } from '../components/ui';
+import { audit } from '../utils/api';
 import type { AuditLog } from '../utils/api';
 
+const actionLabels: Record<string, string> = {
+  CREATED: 'Ticket creado',
+  STATUS_CHANGED: 'Estado cambiado',
+  PRIORITY_CHANGED: 'Prioridad cambiada',
+  ASSIGNED: 'Ticket asignado',
+  COMMENT_ADDED: 'Comentario agregado',
+};
+
 export default function AuditPage() {
-  const { id: ticketId = '' } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const { id = '' } = useParams<{ id: string }>();
 
   const [events, setEvents] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadAudit() {
-      try {
-        const data = await audit.list(ticketId);
-        setEvents(data);
-      } catch (e: any) {
-        setError(e.message);
-      }
+    if (!id) {
       setLoading(false);
+      return;
     }
-    if (ticketId) loadAudit();
-    else setLoading(false);
-  }, [ticketId]);
-
-  const handleLogout = async () => {
-    await auth.logout();
-    window.location.assign('/login');
-  };
-
-  if (loading) return <p className="p-6">Cargando historial...</p>;
-  if (!ticketId) return <p className="p-6 text-red-600">ID de ticket requerido</p>;
+    let active = true;
+    setLoading(true);
+    setError(null);
+    audit
+      .list(id)
+      .then((data) => {
+        if (active) setEvents(data);
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : 'No se pudo cargar la auditoría');
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [id]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white p-4 shadow-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <button
-            onClick={() => navigate(`/ticket/${ticketId}`)}
-            className="text-xl font-bold text-left"
-          >
-            ← HelpDesk API
-          </button>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-600">Bienvenido</span>
-            <button onClick={handleLogout} className="text-sm text-blue-600 hover-underline">
-              Cerrar sesión
-            </button>
-          </div>
-        </div>
-      </nav>
+    <div className="space-y-6">
+      <div>
+        <Link to={`/ticket/${id}`} className="text-sm text-blue-600 hover:underline">
+          ← Volver al ticket
+        </Link>
+        <h1 className="mt-2 text-2xl font-bold text-slate-900">Historial de auditoría</h1>
+        <p className="text-sm text-slate-500">Ticket #{id}</p>
+      </div>
 
-      <main className="max-w-7xl mx-auto p-6">
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-4">
-            Historial de auditoría - Ticket #{ticketId}
-          </h2>
-          {error && <p className="text-red-600 mb-3">{error}</p>}
-          {events.length === 0 ? (
-            <p className="text-gray-500">No hay eventos de auditoría para este ticket.</p>
-          ) : (
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {events.map((event) => (
-                <div
-                  key={event.id}
-                  className="px-3 py-2 border-l-4 border-blue-500 rounded-md bg-gray-50"
-                >
-                  <p className="font-medium text-gray-700">{event.action}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {(event.user?.name || event.userId || 'Sistema') + ' - '}
-                    {new Date(event.createdAt).toLocaleString()}
-                  </p>
-                  {event.details && (
-                    <p className="text-xs text-gray-400 mt-1">{event.details}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
+      {loading ? (
+        <Spinner label="Cargando historial..." />
+      ) : error ? (
+        <ErrorMessage message={error} />
+      ) : events.length === 0 ? (
+        <EmptyState
+          title="Sin eventos registrados"
+          description="Todavía no se registraron cambios en este ticket."
+        />
+      ) : (
+        <ol className="space-y-3">
+          {events.map((event) => (
+            <li key={event.id} className="card border-l-4 border-l-blue-500 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium text-slate-800">
+                  {actionLabels[event.action] ?? event.action}
+                </span>
+                <span className="text-xs text-slate-500">
+                  {new Date(event.createdAt).toLocaleString()}
+                </span>
+              </div>
+              {event.details && <p className="mt-1 text-sm text-slate-600">{event.details}</p>}
+              <p className="mt-1 text-xs text-slate-500">
+                {event.user ? `${event.user.name} (${event.user.email})` : 'Sistema'}
+              </p>
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
