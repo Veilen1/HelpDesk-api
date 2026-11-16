@@ -14,6 +14,20 @@ export function configureApp(app: INestApplication): void {
   ];
 
   // Configurar CORS explícitamente con las opciones necesarias
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.indexOf(origin) !== -1) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
   app.enableCors({
     origin: (origin: string | boolean, callback: (err: Error | null, success?: boolean) => void): void => {
       // Permitir requests sin origin (como Postman o mobile apps)
