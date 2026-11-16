@@ -19,3 +19,4 @@ skills/
 # Vercel outputs
 *.vercel
 vercel-out/
+.neon
