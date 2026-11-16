@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://help-desk-api-rho.vercel.app';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://help-desk-api-inky.vercel.app';
 
 export interface User {
   id: string;
