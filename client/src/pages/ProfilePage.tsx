@@ -3,6 +3,15 @@ import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/ToastProvider';
 import { ErrorMessage, RoleBadge } from '../components/ui';
 
+function initials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
 export default function ProfilePage() {
   const { user, updateProfile } = useAuth();
   const { notify } = useToast();
@@ -68,103 +77,131 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Mi perfil</h1>
-        <p className="text-sm text-slate-500">Datos de tu cuenta</p>
-      </div>
+    <div className="mx-auto max-w-3xl">
+      <header className="mb-8 border-b border-ink/15 pb-5">
+        <p className="eyebrow">Cuenta · ajustes</p>
+        <h1 className="display-lg mt-2">Mi perfil</h1>
+      </header>
 
-      <div className="card flex flex-wrap items-center justify-between gap-3 p-6">
-        <div>
-          <p className="text-lg font-semibold text-slate-900">{user.name}</p>
-          <p className="text-sm text-slate-500">{user.email}</p>
+      {/* Ficha de identidad */}
+      <section className="panel mb-6 flex flex-wrap items-center gap-4 p-5">
+        <span className="flex h-14 w-14 items-center justify-center rounded-[2px] border border-ink bg-ink font-display text-lg font-semibold text-paper-50">
+          {initials(user.name)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-xl font-semibold tracking-tight text-ink">{user.name}</p>
+          <p className="font-mono text-[12px] text-ink-500">{user.email}</p>
         </div>
         <RoleBadge role={user.role} />
+      </section>
+
+      <div className="space-y-6">
+        <form onSubmit={handleProfileSubmit} className="panel p-5 sm:p-6">
+          <div className="mb-5 flex items-baseline justify-between gap-3 border-b border-ink/10 pb-2">
+            <h2 className="font-display text-lg font-semibold tracking-tight">Datos personales</h2>
+            <span className="serial">01</span>
+          </div>
+
+          {profileError && (
+            <div className="mb-4">
+              <ErrorMessage message={profileError} />
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="profile-name">
+                Nombre
+              </label>
+              <input
+                id="profile-name"
+                className="input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                minLength={2}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="label" htmlFor="profile-email">
+                Correo electrónico
+              </label>
+              <input
+                id="profile-email"
+                type="email"
+                className="input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-ink/10 pt-4">
+            <p className="field-hint mt-0">
+              El correo se usa para iniciar sesión; tiene que ser único.
+            </p>
+            <button type="submit" className="btn-primary btn-sm" disabled={savingProfile}>
+              {savingProfile ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+          </div>
+        </form>
+
+        <form onSubmit={handlePasswordSubmit} className="panel p-5 sm:p-6">
+          <div className="mb-5 flex items-baseline justify-between gap-3 border-b border-ink/10 pb-2">
+            <h2 className="font-display text-lg font-semibold tracking-tight">Seguridad</h2>
+            <span className="serial">02</span>
+          </div>
+
+          {passwordError && (
+            <div className="mb-4">
+              <ErrorMessage message={passwordError} />
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="new-password">
+                Nueva contraseña
+              </label>
+              <input
+                id="new-password"
+                type="password"
+                className="input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                minLength={6}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="label" htmlFor="confirm-password">
+                Repetir contraseña
+              </label>
+              <input
+                id="confirm-password"
+                type="password"
+                className="input"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                minLength={6}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-ink/10 pt-4">
+            <p className="field-hint mt-0">Mínimo 6 caracteres.</p>
+            <button type="submit" className="btn-primary btn-sm" disabled={savingPassword}>
+              {savingPassword ? 'Actualizando…' : 'Actualizar contraseña'}
+            </button>
+          </div>
+        </form>
       </div>
-
-      <form onSubmit={handleProfileSubmit} className="card space-y-4 p-6">
-        <h2 className="text-lg font-semibold text-slate-900">Datos personales</h2>
-
-        {profileError && <ErrorMessage message={profileError} />}
-
-        <div>
-          <label className="label" htmlFor="profile-name">
-            Nombre
-          </label>
-          <input
-            id="profile-name"
-            className="input"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            minLength={2}
-            required
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor="profile-email">
-            Correo electrónico
-          </label>
-          <input
-            id="profile-email"
-            type="email"
-            className="input"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-
-        <div className="flex justify-end">
-          <button type="submit" className="btn-primary" disabled={savingProfile}>
-            {savingProfile ? 'Guardando...' : 'Guardar cambios'}
-          </button>
-        </div>
-      </form>
-
-      <form onSubmit={handlePasswordSubmit} className="card space-y-4 p-6">
-        <h2 className="text-lg font-semibold text-slate-900">Cambiar contraseña</h2>
-
-        {passwordError && <ErrorMessage message={passwordError} />}
-
-        <div>
-          <label className="label" htmlFor="new-password">
-            Nueva contraseña
-          </label>
-          <input
-            id="new-password"
-            type="password"
-            className="input"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-            minLength={6}
-            required
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor="confirm-password">
-            Confirmar contraseña
-          </label>
-          <input
-            id="confirm-password"
-            type="password"
-            className="input"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            autoComplete="new-password"
-            minLength={6}
-            required
-          />
-        </div>
-
-        <div className="flex justify-end">
-          <button type="submit" className="btn-primary" disabled={savingPassword}>
-            {savingPassword ? 'Actualizando...' : 'Actualizar contraseña'}
-          </button>
-        </div>
-      </form>
     </div>
   );
 }

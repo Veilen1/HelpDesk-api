@@ -5,14 +5,36 @@ import { useToast } from '../components/ToastProvider';
 import {
   EmptyState,
   ErrorMessage,
+  formatDate,
+  formatDateTime,
   PRIORITY_OPTIONS,
   PriorityBadge,
+  shortId,
   Spinner,
   STATUS_OPTIONS,
   StatusBadge,
 } from '../components/ui';
 import { comments, tickets, users } from '../utils/api';
 import type { Comment, Ticket, TicketPriority, TicketStatus, User } from '../utils/api';
+
+function initials(name?: string): string {
+  if (!name) return '??';
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+}
+
+function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-ink/10 py-2 last:border-b-0">
+      <span className="eyebrow shrink-0">{label}</span>
+      <span className="min-w-0 truncate text-right text-sm text-ink-700">{children}</span>
+    </div>
+  );
+}
 
 export default function TicketDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -63,7 +85,7 @@ export default function TicketDetailPage() {
   }, [loadTicket]);
 
   // Solo un ADMIN puede listar usuarios (GET /api/users), así que la
-  // asignación desde la UI queda disponible únicamente para ese rol.
+  // asignación desde la interfaz queda disponible únicamente para ese rol.
   useEffect(() => {
     if (!isAdmin) return;
     let active = true;
@@ -81,7 +103,7 @@ export default function TicketDetailPage() {
     };
   }, [isAdmin]);
 
-  if (loading) return <Spinner label="Cargando ticket..." />;
+  if (loading) return <Spinner label="Abriendo expediente" />;
   if (error) return <ErrorMessage message={error} />;
   if (!ticket) return <ErrorMessage message="Ticket no encontrado" />;
 
@@ -120,7 +142,7 @@ export default function TicketDetailPage() {
     try {
       const updated = await tickets.changeStatus(ticket.id, status);
       setTicket(updated);
-      notify('Estado actualizado');
+      notify(`Estado: ${status}`);
     } catch (err) {
       notify(err instanceof Error ? err.message : 'No se pudo cambiar el estado', 'error');
     } finally {
@@ -179,246 +201,282 @@ export default function TicketDetailPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <button type="button" className="btn-secondary" onClick={() => navigate('/')}>
-          ← Volver
+    <div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          className="serial inline-flex items-center gap-2 hover:text-accent"
+          onClick={() => navigate('/')}
+        >
+          ← Volver a los tickets
         </button>
         {canManage && (
-          <Link to={`/audit/${ticket.id}`} className="btn-secondary">
+          <Link to={`/audit/${ticket.id}`} className="btn-secondary btn-sm">
             Ver auditoría
           </Link>
         )}
       </div>
 
-      <div className="card p-6">
-        {editing ? (
-          <form onSubmit={handleSaveEdit} className="space-y-4">
-            <div>
-              <label className="label" htmlFor="edit-title">
-                Título
-              </label>
-              <input
-                id="edit-title"
-                className="input"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                minLength={5}
-                required
-              />
-            </div>
-            <div>
-              <label className="label" htmlFor="edit-description">
-                Descripción
-              </label>
-              <textarea
-                id="edit-description"
-                className="input min-h-[140px] resize-y"
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                minLength={10}
-                required
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => {
-                  setEditing(false);
-                  setEditTitle(ticket.title);
-                  setEditDescription(ticket.description);
-                }}
-              >
-                Cancelar
-              </button>
-              <button type="submit" className="btn-primary" disabled={savingEdit}>
-                {savingEdit ? 'Guardando...' : 'Guardar cambios'}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <>
-            <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">{ticket.title}</h1>
-              <div className="flex items-center gap-2">
-                <StatusBadge status={ticket.status} />
-                <PriorityBadge priority={ticket.priority} />
-              </div>
-            </div>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
+        {/* ---------------- Columna principal ---------------- */}
+        <div className="min-w-0 space-y-6">
+          <article className="panel p-5 sm:p-6">
+            <p className="serial">
+              Expediente #{shortId(ticket.id)} · {formatDate(ticket.createdAt)}
+            </p>
 
-            <p className="whitespace-pre-line text-slate-700">{ticket.description}</p>
+            {editing ? (
+              <form onSubmit={handleSaveEdit} className="mt-4 space-y-4">
+                <div>
+                  <label className="label" htmlFor="edit-title">
+                    Título
+                  </label>
+                  <input
+                    id="edit-title"
+                    className="input text-base"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    minLength={5}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="edit-description">
+                    Descripción
+                  </label>
+                  <textarea
+                    id="edit-description"
+                    className="input min-h-[150px] resize-y leading-relaxed"
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    minLength={10}
+                    required
+                  />
+                </div>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => {
+                      setEditing(false);
+                      setEditTitle(ticket.title);
+                      setEditDescription(ticket.description);
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn-primary" disabled={savingEdit}>
+                    {savingEdit ? 'Guardando…' : 'Guardar cambios'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <h1 className="display-lg mt-2 text-balance">{ticket.title}</h1>
 
-            <dl className="mt-6 grid gap-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <dt className="text-slate-500">Creado por</dt>
-                <dd className="font-medium text-slate-800">
-                  {ticket.creator?.name ?? 'Desconocido'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">Asignado a</dt>
-                <dd className="font-medium text-slate-800">
-                  {ticket.assignedTo?.name ?? 'Sin asignar'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">Creado</dt>
-                <dd className="font-medium text-slate-800">
-                  {new Date(ticket.createdAt).toLocaleString()}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">Actualizado</dt>
-                <dd className="font-medium text-slate-800">
-                  {new Date(ticket.updatedAt).toLocaleString()}
-                </dd>
-              </div>
-            </dl>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <StatusBadge status={ticket.status} />
+                  <PriorityBadge priority={ticket.priority} />
+                </div>
 
-            {canEdit && (
-              <div className="mt-4">
-                <button type="button" className="btn-secondary" onClick={() => setEditing(true)}>
-                  Editar título y descripción
-                </button>
-                {!canManage && (
-                  <p className="mt-2 text-xs text-slate-500">
-                    Solo podés editar el ticket mientras esté abierto.
+                <div className="mt-5 border-t border-ink/10 pt-5">
+                  <p className="whitespace-pre-line text-[0.95rem] leading-relaxed text-ink-700 text-pretty">
+                    {ticket.description}
                   </p>
+                </div>
+
+                {canEdit && (
+                  <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-ink/10 pt-4">
+                    <button
+                      type="button"
+                      className="btn-secondary btn-sm"
+                      onClick={() => setEditing(true)}
+                    >
+                      Editar título y descripción
+                    </button>
+                    {!canManage && (
+                      <span className="serial">editable mientras el ticket esté abierto</span>
+                    )}
+                  </div>
                 )}
-              </div>
+              </>
             )}
-          </>
-        )}
-      </div>
+          </article>
 
-      {canManage && (
-        <div className="card space-y-4 p-6">
-          <h2 className="text-lg font-semibold text-slate-900">Gestión</h2>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="label" htmlFor="status-select">
-                Estado
-              </label>
-              <select
-                id="status-select"
-                className="input"
-                value={ticket.status}
-                disabled={savingStatus}
-                onChange={(e) => void handleStatusChange(e.target.value as TicketStatus)}
-              >
-                {STATUS_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+          {/* ---------------- Conversación ---------------- */}
+          <section className="panel p-5 sm:p-6" aria-label="Comentarios">
+            <div className="mb-4 flex items-baseline justify-between gap-3 border-b border-ink/10 pb-2">
+              <h2 className="font-display text-lg font-semibold tracking-tight">Conversación</h2>
+              <span className="serial">
+                {commentList.length} mensaje{commentList.length === 1 ? '' : 's'}
+              </span>
             </div>
 
-            <div>
-              <label className="label" htmlFor="priority-select">
-                Prioridad
-              </label>
-              <select
-                id="priority-select"
-                className="input"
-                value={ticket.priority}
-                disabled={savingPriority}
-                onChange={(e) => void handlePriorityChange(e.target.value as TicketPriority)}
-              >
-                {PRIORITY_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
+            {commentList.length === 0 ? (
+              <EmptyState
+                title="Sin mensajes todavía"
+                description="Escribí el primero para dejar contexto o pedir una actualización."
+              />
+            ) : (
+              <ol className="space-y-4">
+                {commentList.map((comment) => (
+                  <li key={comment.id} className="flex gap-3">
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[2px] border border-ink/25 bg-paper-100 font-mono text-[10px] tracking-stamp text-ink-500">
+                      {initials(comment.author?.name)}
+                    </span>
+                    <div className="min-w-0 flex-1 border-l border-ink/15 pl-3">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <span className="text-sm font-medium text-ink">
+                          {comment.author?.name ?? 'Usuario'}
+                        </span>
+                        <span className="serial">{formatDateTime(comment.createdAt)}</span>
+                      </div>
+                      <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink-700 text-pretty">
+                        {comment.content}
+                      </p>
+                    </div>
+                  </li>
                 ))}
-              </select>
+              </ol>
+            )}
+
+            {canManage || isCreator ? (
+              <form onSubmit={handleAddComment} className="mt-6 border-t border-ink/10 pt-5">
+                <label className="label" htmlFor="new-comment">
+                  Añadir comentario
+                </label>
+                <textarea
+                  id="new-comment"
+                  className="input min-h-[90px] resize-y"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Escribí una actualización o una pregunta…"
+                  maxLength={1000}
+                />
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className="field-hint">{newComment.length}/1000</span>
+                  <button
+                    type="submit"
+                    className="btn-primary btn-sm"
+                    disabled={postingComment || newComment.trim().length < 2}
+                  >
+                    {postingComment ? 'Enviando…' : 'Comentar'}
+                  </button>
+                </div>
+              </form>
+            ) : null}
+          </section>
+        </div>
+
+        {/* ---------------- Panel de expediente ---------------- */}
+        <aside className="space-y-4 lg:sticky lg:top-8">
+          <div className="panel">
+            <div className="border-b border-ink/15 bg-paper-100/60 px-4 py-2.5">
+              <p className="eyebrow">Expediente</p>
+            </div>
+
+            <div className="px-4 py-3">
+              <MetaRow label="Creado por">{ticket.creator?.name ?? 'Desconocido'}</MetaRow>
+              <MetaRow label="Asignado">
+                {ticket.assignedTo ? (
+                  ticket.assignedTo.name
+                ) : (
+                  <span className="text-ink-400">sin asignar</span>
+                )}
+              </MetaRow>
+              <MetaRow label="Alta">{formatDate(ticket.createdAt)}</MetaRow>
+              <MetaRow label="Último cambio">{formatDate(ticket.updatedAt)}</MetaRow>
             </div>
           </div>
 
-          {isAdmin && (
-            <div>
-              <label className="label" htmlFor="assign-select">
-                Asignar a
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <select
-                  id="assign-select"
-                  className="input flex-1"
-                  value={selectedAgent}
-                  onChange={(e) => setSelectedAgent(e.target.value)}
-                >
-                  <option value="">Sin asignar</option>
-                  {agents.map((agent) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.name} ({agent.email})
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  disabled={assigning || !selectedAgent}
-                  onClick={() => void handleAssign()}
-                >
-                  {assigning ? 'Asignando...' : 'Asignar'}
-                </button>
+          {canManage ? (
+            <div className="panel">
+              <div className="border-b border-ink/15 bg-paper-100/60 px-4 py-2.5">
+                <p className="eyebrow">Gestión</p>
+              </div>
+
+              <div className="space-y-4 px-4 py-4">
+                <div>
+                  <label className="label" htmlFor="status-select">
+                    Estado
+                  </label>
+                  <select
+                    id="status-select"
+                    className="input"
+                    value={ticket.status}
+                    disabled={savingStatus}
+                    onChange={(e) => void handleStatusChange(e.target.value as TicketStatus)}
+                  >
+                    {STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="label" htmlFor="priority-select">
+                    Prioridad
+                  </label>
+                  <select
+                    id="priority-select"
+                    className="input"
+                    value={ticket.priority}
+                    disabled={savingPriority}
+                    onChange={(e) => void handlePriorityChange(e.target.value as TicketPriority)}
+                  >
+                    {PRIORITY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {isAdmin && (
+                  <div className="border-t border-ink/10 pt-4">
+                    <label className="label" htmlFor="assign-select">
+                      Asignar a
+                    </label>
+                    <select
+                      id="assign-select"
+                      className="input"
+                      value={selectedAgent}
+                      onChange={(e) => setSelectedAgent(e.target.value)}
+                    >
+                      <option value="">Sin asignar</option>
+                      {ticket.assignedTo && !agents.some((a) => a.id === ticket.assignedTo?.id) && (
+                        <option value={ticket.assignedTo.id}>{ticket.assignedTo.name}</option>
+                      )}
+                      {agents.map((agent) => (
+                        <option key={agent.id} value={agent.id}>
+                          {agent.name} · {agent.email}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="btn-primary btn-sm mt-2 w-full"
+                      disabled={assigning || !selectedAgent}
+                      onClick={() => void handleAssign()}
+                    >
+                      {assigning ? 'Asignando…' : 'Asignar'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-          )}
-        </div>
-      )}
-
-      <div className="card p-6">
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">
-          Comentarios ({commentList.length})
-        </h2>
-
-        {commentList.length === 0 ? (
-          <EmptyState title="Todavía no hay comentarios" />
-        ) : (
-          <ul className="space-y-3">
-            {commentList.map((comment) => (
-              <li key={comment.id} className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-slate-800">
-                    {comment.author?.name ?? 'Usuario'}
-                  </span>
-                  <span className="text-xs text-slate-500">
-                    {new Date(comment.createdAt).toLocaleString()}
-                  </span>
-                </div>
-                <p className="whitespace-pre-line text-sm text-slate-700">{comment.content}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {canManage || isCreator ? (
-          <form onSubmit={handleAddComment} className="mt-5 space-y-2">
-            <label className="label" htmlFor="new-comment">
-              Añadir comentario
-            </label>
-            <textarea
-              id="new-comment"
-              className="input min-h-[90px] resize-y"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Escribí tu comentario..."
-              maxLength={1000}
-            />
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-slate-500">{newComment.length}/1000</span>
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={postingComment || newComment.trim().length < 2}
-              >
-                {postingComment ? 'Enviando...' : 'Comentar'}
-              </button>
+          ) : (
+            <div className="panel-flat px-4 py-3">
+              <p className="eyebrow">Seguimiento</p>
+              <p className="mt-2 text-sm leading-relaxed text-ink-500">
+                El estado y la prioridad los administra el equipo de soporte. Podés sumar
+                comentarios en cualquier momento.
+              </p>
             </div>
-          </form>
-        ) : null}
+          )}
+        </aside>
       </div>
     </div>
   );

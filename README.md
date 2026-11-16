@@ -1,50 +1,67 @@
-# HelpDesk API
+# HelpDesk · mesa de ayuda
 
-API REST profesional para gestión de tickets de soporte técnico, construida con **NestJS**, **TypeScript**, **PostgreSQL** y **Prisma ORM**.
+Aplicación full-stack de gestión de tickets de soporte: registro de clientes, creación y
+seguimiento de tickets, asignación a agentes, conversación en hilo y auditoría inmutable de
+cada cambio.
 
-> **Despliegue en producción:** [https://help-desk-api-rho.vercel.app/](https://help-desk-api-rho.vercel.app/)  
-> **Documentación interactiva Swagger:** [https://help-desk-api-rho.vercel.app/docs](https://help-desk-api-rho.vercel.app/docs)
+El repositorio contiene **dos proyectos desplegables por separado**:
+
+| Proyecto | Stack | Root Directory | Producción |
+| --- | --- | --- | --- |
+| **API** | NestJS 12 · TypeScript · Prisma · PostgreSQL | raíz del repo | [help-desk-api-inky.vercel.app](https://help-desk-api-inky.vercel.app) |
+| **Cliente web** | React 19 · Vite 8 · Tailwind CSS | `client` | [helpdeskclient.vercel.app](https://helpdeskclient.vercel.app) |
+
+> **Swagger (producción):** [help-desk-api-inky.vercel.app/docs](https://help-desk-api-inky.vercel.app/docs) ·
+> **Health check:** [`/health`](https://help-desk-api-inky.vercel.app/health)
 
 ---
 
-## 🎯 Objetivo del proyecto
+## 🎯 Flujo del producto
 
-El flujo principal del producto modela el ciclo completo de soporte al cliente:
-
-1. **Cliente:** Se registra, inicia sesión y crea un ticket con su incidencia.
-2. **Agente:** Consulta los tickets entrantes, los toma/asigna, actualiza el estado y responde comentarios.
-3. **Conversación:** Cliente y agente intercambian comentarios en el hilo del ticket.
-4. **Trazabilidad:** Cada cambio relevante (creación, cambio de estado, prioridad, asignación y comentarios) queda registrado en una auditoría inmutable (`AuditLog`).
+1. **Cliente:** se registra, inicia sesión y crea un ticket con su incidencia.
+2. **Agente / Admin:** consulta la bandeja, asigna el ticket, actualiza estado y prioridad y responde.
+3. **Conversación:** cliente y agente intercambian comentarios en el hilo del ticket.
+4. **Trazabilidad:** creación, cambios de estado, prioridad, asignación y comentarios quedan
+   registrados en `AuditLog`, visible sólo para AGENT y ADMIN.
 
 ---
 
 ## 🛠️ Stack tecnológico
 
-- **Framework:** [NestJS 12](https://nestjs.com/) (Arquitectura modular, inyección de dependencias, guards y pipes)
-- **Lenguaje:** TypeScript (ESM)
-- **Base de datos:** PostgreSQL
-- **ORM:** [Prisma ORM](https://www.prisma.io/) con migraciones y tipado fuerte
-- **Autenticación & Autorización:** Passport JWT, hash seguro con `bcryptjs`, decorators `@Roles()` y `RolesGuard`
-- **Validación:** `class-validator` y `class-transformer` con `ValidationPipe` global
-- **Documentación:** Swagger / OpenAPI interactivo con soporte CDN para serverless
-- **Testing:** Vitest y Supertest (unit tests de reglas de negocio)
-- **Infraestructura:** Docker Compose para desarrollo local y Vercel Serverless Functions para producción
-- **Integración Continua:** GitHub Actions CI (lint, tests y build)
+**Backend**
+
+- **NestJS 12** — arquitectura modular, inyección de dependencias, guards y pipes
+- **TypeScript (ESM)** con tipado estricto
+- **PostgreSQL** + **Prisma ORM** (esquema, migraciones y cliente tipado)
+- **Autenticación** — Passport JWT, `bcryptjs`, decorador `@Roles()` y `RolesGuard`
+- **Validación** — `class-validator` + `class-transformer` con `ValidationPipe` global
+- **Documentación** — Swagger / OpenAPI interactivo (CDN, compatible con serverless)
+- **Testing** — Vitest + Supertest
+- **Infra** — Docker Compose para desarrollo local, Vercel Serverless Functions en producción
+- **CI** — GitHub Actions (lint, tests y build)
+
+**Frontend**
+
+- **React 19** + `react-router-dom` (SPA con `BrowserRouter`, sin SSR)
+- **Vite 8** + **Tailwind CSS 3.4** (PostCSS + Autoprefixer)
+- Capa de API tipada con `fetch` y sesión en Context + `localStorage`
+- Ver [`client/README.md`](client/README.md) para el detalle del sistema visual y las rutas.
 
 ---
 
-## 🔐 Matriz de permisos y autorización
+## 🔐 Matriz de permisos
 
 | Funcionalidad | Customer | Agent | Admin |
 | --- | :---: | :---: | :---: |
 | Crear tickets | ✅ | ✅ | ✅ |
 | Ver tickets propios | ✅ | ✅ | ✅ |
 | Listar todos los tickets del sistema | ❌ | ✅ | ✅ |
-| Modificar estado / prioridad de ticket | ❌ | ✅ | ✅ |
-| Asignar ticket a agente | ❌ | ✅ | ✅ |
+| Editar título / descripción de un ticket | ✅ (sólo propio y `OPEN`) | ✅ | ✅ |
+| Modificar estado / prioridad | ❌ | ✅ | ✅ |
+| Asignar ticket a un agente | ❌ | ✅ | ✅ |
 | Comentar en ticket propio | ✅ | ✅ | ✅ |
 | Comentar en tickets ajenos | ❌ | ✅ | ✅ |
-| Ver historial de auditoría de ticket | ❌ | ✅ | ✅ |
+| Ver historial de auditoría | ❌ | ✅ | ✅ |
 | Listar y administrar usuarios | ❌ | ❌ | ✅ |
 
 ---
@@ -52,27 +69,40 @@ El flujo principal del producto modela el ciclo completo de soporte al cliente:
 ## 📡 Endpoints principales
 
 ### Autenticación
-- `POST /api/auth/register` - Registro público de nuevos clientes
-- `POST /api/auth/login` - Inicio de sesión y generación de Bearer JWT
-- `GET /api/auth/me` - Perfil del usuario autenticado actual
 
-### Usuarios (Gestión Administrativa)
-- `GET /api/users` - Listar todos los usuarios (`ADMIN`)
-- `GET /api/users/:id` - Consultar usuario (`ADMIN` o propio)
-- `PATCH /api/users/:id` - Actualizar usuario o rol (`ADMIN` o propio)
+- `POST /api/auth/register` — registro público de nuevos clientes
+- `POST /api/auth/login` — inicio de sesión, devuelve Bearer JWT
+- `GET /api/auth/me` — perfil del usuario autenticado
+
+### Usuarios (gestión administrativa)
+
+- `GET /api/users` — listar usuarios (`ADMIN`)
+- `GET /api/users/:id` — consultar usuario (`ADMIN` o el propio)
+- `PATCH /api/users/:id` — actualizar datos o rol (`ADMIN` o el propio)
 
 ### Tickets
-- `POST /api/tickets` - Crear ticket de soporte
-- `GET /api/tickets` - Listar tickets con paginación (`page`, `limit`) y filtros (`status`, `priority`, `assignedToId`)
-- `GET /api/tickets/:id` - Detalle de un ticket
-- `PATCH /api/tickets/:id` - Actualizar información del ticket
-- `PATCH /api/tickets/:id/status` - Modificar estado (`OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`) (`AGENT`, `ADMIN`)
-- `PATCH /api/tickets/:id/assign` - Asignar ticket a un agente (`AGENT`, `ADMIN`)
 
-### Comentarios y Auditoría
-- `POST /api/tickets/:ticketId/comments` - Agregar comentario al ticket
-- `GET /api/tickets/:ticketId/comments` - Listar comentarios del ticket
-- `GET /api/tickets/:ticketId/audit` - Historial de eventos y auditoría (`AGENT`, `ADMIN`)
+- `POST /api/tickets` — crear ticket
+- `GET /api/tickets` — listar con paginación (`page`, `limit`) y filtros (`status`, `priority`, `assignedToId`)
+- `GET /api/tickets/:id` — detalle
+- `PATCH /api/tickets/:id` — actualizar título, descripción, prioridad o estado
+- `PATCH /api/tickets/:id/status` — cambiar estado (`OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`) — `AGENT`, `ADMIN`
+- `PATCH /api/tickets/:id/assign` — asignar a un agente, body `{ "assignedToId": "<uuid>" }` — `AGENT`, `ADMIN`
+
+### Comentarios y auditoría
+
+- `POST /api/tickets/:ticketId/comments` — agregar comentario
+- `GET /api/tickets/:ticketId/comments` — listar comentarios
+- `GET /api/tickets/:ticketId/audit` — historial de eventos — `AGENT`, `ADMIN`
+
+Respuesta de listados:
+
+```json
+{
+  "data": [ /* ... */ ],
+  "meta": { "total": 42, "page": 1, "limit": 12, "totalPages": 4 }
+}
+```
 
 ---
 
@@ -88,83 +118,136 @@ npm install
 
 ### 2. Configurar variables de entorno
 
-Copiar `.env.example` como `.env`:
-
 ```bash
 cp .env.example .env
 ```
 
-Variables disponibles:
-
 | Variable | Descripción | Valor por defecto |
 | --- | --- | --- |
-| `NODE_ENV` | Entorno de ejecución (`development`, `test`, `production`) | `development` |
+| `NODE_ENV` | Entorno (`development`, `test`, `production`) | `development` |
 | `PORT` | Puerto HTTP de la API | `3000` |
 | `DATABASE_URL` | Cadena de conexión PostgreSQL | `postgresql://postgres:postgres@localhost:5432/helpdesk?schema=public` |
-| `JWT_SECRET` | Clave secreta para firmar tokens JWT | `super-secret-helpdesk-key-for-dev-change-in-prod` |
-| `JWT_EXPIRES_IN` | Tiempo de expiración del token | `1d` |
+| `JWT_SECRET` | Clave para firmar tokens JWT | `super-secret-helpdesk-key-for-dev-change-in-prod` |
+| `JWT_EXPIRES_IN` | Expiración del token | `1d` |
+| `CORS_ORIGINS` | Orígenes extra permitidos, separados por coma (opcional) | — |
 
-### 3. Iniciar la base de datos local (Docker Compose)
+### 3. Base de datos local
 
 ```bash
 docker compose up -d
-```
-
-### 4. Generar cliente y poblar datos iniciales (Seed)
-
-```bash
-# Generar tipos de Prisma
 npx prisma generate
-
-# Sincronizar esquema con la base de datos
 npx prisma db push
-
-# Poblar usuarios y tickets de prueba
 npm run db:seed
 ```
 
-#### Usuarios de prueba generados por el seed:
-- **Admin:** `admin@helpdesk.com` / `Password123!`
-- **Agente:** `agent@helpdesk.com` / `Password123!`
-- **Cliente:** `customer@helpdesk.com` / `Password123!`
+Usuarios creados por el seed:
 
-### 5. Iniciar la API
+| Rol | Correo | Contraseña |
+| --- | --- | --- |
+| Admin | `admin@helpdesk.com` | `Password123!` |
+| Agente | `agent@helpdesk.com` | `Password123!` |
+| Cliente | `customer@helpdesk.com` | `Password123!` |
+
+### 4. Iniciar la API
 
 ```bash
 npm run start:dev
 ```
 
-- API local: `http://localhost:3000`
-- Swagger UI local: `http://localhost:3000/docs`
+- API: `http://localhost:3000`
+- Swagger: `http://localhost:3000/docs`
+
+### 5. Iniciar el cliente web
+
+```bash
+cd client
+npm install
+npm run dev          # http://localhost:5173
+```
+
+Por defecto el cliente apunta a la API de producción. Para usar la API local, creá
+`client/.env.local` con `VITE_API_BASE=http://localhost:3000`. `src/server.ts` ya permite
+`localhost:5173`, `localhost:4173` y los previews de Vercel.
 
 ---
 
-## 🧪 Pruebas y calidad de código
+## 🧪 Pruebas y calidad
 
 ```bash
-# Validación de linter y tipado estricto
-npm run lint
+npm run lint     # lint
+npm run test     # Vitest + Supertest
+npm run build    # compilación de producción
+```
 
-# Ejecutar suite de tests unitarios (Vitest)
-npm run test
+En `client/`: `npm run build` ejecuta `tsc -b` + Vite, y `npm run lint` corre Oxlint.
 
-# Compilación de producción
-npm run build
+---
+
+## ☁️ Despliegue en Vercel (dos proyectos, un repo)
+
+El repositorio se despliega como **dos proyectos independientes** que comparten el mismo
+commit.
+
+### Proyecto API
+
+1. Importar el repositorio en Vercel y dejar **Root Directory** en la raíz.
+2. Vercel detecta `api/index.ts` y compila con `npm run build`; `postinstall` ejecuta
+   `prisma generate`.
+3. Configurar `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` y, si hace falta, `CORS_ORIGINS`.
+4. `vercel.json` enruta todas las peticiones a la función serverless.
+
+### Proyecto Cliente
+
+1. Importar el mismo repositorio y fijar **Root Directory** en `client`.
+2. Framework Preset **Vite**, **Output Directory** `dist`.
+3. Variable opcional `VITE_API_BASE=https://help-desk-api-inky.vercel.app`.
+4. `client/vercel.json` reescribe cualquier ruta a `/index.html` para que recargar
+   `/login`, `/ticket/:id`, `/audit/:id` o `/users` no devuelva 404.
+
+> Si cambiás el dominio del cliente, agregalo a los orígenes permitidos en `src/server.ts`
+> o en `CORS_ORIGINS`.
+
+---
+
+## 📁 Estructura del repositorio
+
+```
+.
+├─ api/                  # entrypoint serverless (Vercel)
+├─ prisma/               # schema.prisma + seed
+├─ src/
+│  ├─ auth/              # JWT, guards, strategy
+│  ├─ users/             # administración de cuentas
+│  ├─ tickets/           # CRUD, estado y asignación
+│  ├─ comments/          # hilo de conversación
+│  ├─ audit/             # registro de eventos
+│  ├─ common/            # decoradores, filtros, DTOs compartidos
+│  ├─ app.module.ts
+│  └─ server.ts          # bootstrap + CORS
+├─ test/                 # unit tests
+├─ client/               # frontend React + Vite (proyecto Vercel aparte)
+│  ├─ src/{components,pages,auth,utils}
+│  ├─ tailwind.config.js
+│  └─ README.md
+├─ docker-compose.yml
+├─ vercel.json           # config del proyecto API
+└─ README.md
 ```
 
 ---
 
-## ☁️ Despliegue en Vercel
+## 🖋️ Nota sobre el frontend
 
-El proyecto cuenta con un adaptador serverless (`api/index.ts`) y configuración `vercel.json`:
+La interfaz sigue una dirección **editorial / expediente**: papel cálido, tinta, reglas de
+1px, sellos de estado y numeración monoespaciada, con tipografías **Fraunces** (títulos),
+**IBM Plex Sans** (UI) e **IBM Plex Mono** (series, fechas, IDs). La asignación desde la UI
+aparece sólo para ADMIN porque `GET /api/users` requiere ese rol.
 
-1. Conectar el repositorio de GitHub `Veilen1/HelpDesk-api` en el dashboard de Vercel.
-2. Vercel detecta automáticamente la función serverless y compila con `npm run build`.
-3. El comando `postinstall: prisma generate` genera el cliente Prisma automáticamente en el entorno de construcción.
-4. Para la base de datos en la nube, se integra con **Prisma Postgres** o cualquier proveedor PostgreSQL (Neon, Supabase).
+Detalle completo en [`client/README.md`](client/README.md).
 
 ---
 
 ## 📄 Licencia
 
-Este proyecto fue desarrollado con fines educativos y de portfolio técnico demostrando buenas prácticas de desarrollo backend en NestJS.
+Proyecto desarrollado con fines educativos y de portfolio técnico, demostrando buenas
+prácticas en NestJS, Prisma y React.

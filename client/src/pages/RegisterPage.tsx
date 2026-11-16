@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import AuthShell from '../components/AuthShell';
 import { ErrorMessage } from '../components/ui';
 
 export default function RegisterPage() {
@@ -38,86 +39,82 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10">
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-lg font-bold text-white">
-            HD
-          </span>
-          <h1 className="text-2xl font-bold text-slate-900">Crear cuenta</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Registrate para abrir y seguir tus tickets
-          </p>
+    <AuthShell
+      kicker="Registro · nueva cuenta"
+      title="Abrir un expediente"
+      subtitle="Con la cuenta vas a poder crear tickets y seguirlos."
+      footer={
+        <>
+          ¿Ya tenés cuenta?{' '}
+          <Link
+            to="/login"
+            className="font-medium text-ink underline decoration-accent decoration-2 underline-offset-4 hover:text-accent"
+          >
+            Iniciá sesión
+          </Link>
+        </>
+      }
+    >
+      {error && (
+        <div className="mb-5">
+          <ErrorMessage message={error} />
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label className="label" htmlFor="name">
+            Nombre completo
+          </label>
+          <input
+            id="name"
+            className="input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoComplete="name"
+            minLength={2}
+            placeholder="Carlos Rodríguez"
+            required
+          />
         </div>
 
-        <div className="card p-6 sm:p-8">
-          {error && (
-            <div className="mb-4">
-              <ErrorMessage message={error} />
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="label" htmlFor="name">
-                Nombre completo
-              </label>
-              <input
-                id="name"
-                className="input"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoComplete="name"
-                minLength={2}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="label" htmlFor="email">
-                Correo electrónico
-              </label>
-              <input
-                id="email"
-                type="email"
-                className="input"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="label" htmlFor="password">
-                Contraseña
-              </label>
-              <input
-                id="password"
-                type="password"
-                className="input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                minLength={6}
-                required
-              />
-              <p className="mt-1 text-xs text-slate-500">Mínimo 6 caracteres.</p>
-            </div>
-
-            <button type="submit" className="btn-primary w-full" disabled={loading}>
-              {loading ? 'Creando cuenta...' : 'Crear cuenta'}
-            </button>
-          </form>
-
-          <p className="mt-6 text-center text-sm text-slate-600">
-            ¿Ya tenés cuenta?{' '}
-            <Link to="/login" className="font-medium text-blue-600 hover:underline">
-              Iniciá sesión
-            </Link>
-          </p>
+        <div>
+          <label className="label" htmlFor="email">
+            Correo electrónico
+          </label>
+          <input
+            id="email"
+            type="email"
+            className="input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            placeholder="cliente@ejemplo.com"
+            required
+          />
         </div>
-      </div>
-    </div>
+
+        <div>
+          <label className="label" htmlFor="password">
+            Contraseña
+          </label>
+          <input
+            id="password"
+            type="password"
+            className="input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            minLength={6}
+            required
+          />
+          <p className="field-hint">Mínimo 6 caracteres</p>
+        </div>
+
+        <button type="submit" className="btn-primary w-full" disabled={loading}>
+          {loading ? 'Creando…' : 'Crear cuenta'}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

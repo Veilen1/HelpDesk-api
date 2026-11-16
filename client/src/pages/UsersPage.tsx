@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from '../components/ToastProvider';
-import { ErrorMessage, RoleBadge, Spinner } from '../components/ui';
+import { EmptyState, ErrorMessage, RoleBadge, Spinner } from '../components/ui';
 import { users } from '../utils/api';
 import type { Role, User } from '../utils/api';
 
@@ -30,7 +30,7 @@ export default function UsersPage() {
   const [edit, setEdit] = useState<EditState>({ name: '', email: '', role: 'CUSTOMER' });
   const [saving, setSaving] = useState(false);
 
-  const load = () => {
+  useEffect(() => {
     setLoading(true);
     setError(null);
     users
@@ -40,10 +40,6 @@ export default function UsersPage() {
         setError(err instanceof Error ? err.message : 'No se pudieron cargar los usuarios');
       })
       .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    load();
   }, []);
 
   const startEdit = (target: User) => {
@@ -74,121 +70,159 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Usuarios</h1>
-          <p className="text-sm text-slate-500">Administración de cuentas y roles</p>
+    <div>
+      <header className="mb-8 border-b border-ink/15 pb-5">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="eyebrow">Administración · cuentas</p>
+            <h1 className="display-lg mt-2">Usuarios</h1>
+            <p className="mt-2 max-w-xl text-sm text-ink-500 text-pretty">
+              Cambiá nombre, correo o rol. Los cambios de rol afectan qué puede ver y hacer la
+              cuenta en la mesa de ayuda.
+            </p>
+          </div>
+          <Link to="/" className="btn-secondary">
+            ← Tickets
+          </Link>
         </div>
-        <Link to="/" className="btn-secondary">
-          ← Volver a los tickets
-        </Link>
-      </div>
+      </header>
 
-      {error && <ErrorMessage message={error} />}
+      {error && (
+        <div className="mb-6">
+          <ErrorMessage message={error} />
+        </div>
+      )}
 
       {loading ? (
-        <Spinner label="Cargando usuarios..." />
+        <Spinner label="Cargando cuentas" />
+      ) : list.length === 0 ? (
+        <EmptyState title="No hay cuentas registradas" />
       ) : (
-        <div className="card overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Nombre</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Rol</th>
-                <th className="px-4 py-3 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {list.map((item) => {
-                const isEditing = editingId === item.id;
-                return (
-                  <tr key={item.id} className="align-middle">
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
-                          className="input"
-                          value={edit.name}
-                          onChange={(e) => setEdit((prev) => ({ ...prev, name: e.target.value }))}
-                        />
-                      ) : (
-                        <span className="font-medium text-slate-800">{item.name}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
-                          className="input"
-                          type="email"
-                          value={edit.email}
-                          onChange={(e) => setEdit((prev) => ({ ...prev, email: e.target.value }))}
-                        />
-                      ) : (
-                        <span className="text-slate-600">{item.email}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <select
-                          className="input"
-                          value={edit.role}
-                          onChange={(e) =>
-                            setEdit((prev) => ({ ...prev, role: e.target.value as Role }))
-                          }
-                        >
-                          {ROLE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <RoleBadge role={item.role} />
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
+        <section className="panel overflow-hidden">
+          <div className="flex items-center justify-between border-b border-ink/15 bg-paper-100/60 px-4 py-2.5">
+            <span className="eyebrow">Cuenta</span>
+            <span className="serial">
+              {list.length} registro{list.length === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="hidden sm:table-header-group">
+                <tr className="border-b border-ink/10 text-left">
+                  <th className="px-4 py-2">
+                    <span className="eyebrow">Nombre</span>
+                  </th>
+                  <th className="px-4 py-2">
+                    <span className="eyebrow">Correo</span>
+                  </th>
+                  <th className="px-4 py-2">
+                    <span className="eyebrow">Rol</span>
+                  </th>
+                  <th className="px-4 py-2 text-right">
+                    <span className="eyebrow">Acciones</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((item) => {
+                  const isEditing = editingId === item.id;
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`border-b border-ink/10 last:border-b-0 ${
+                        isEditing ? 'bg-paper-100/70' : 'hover:bg-paper-100/50'
+                      }`}
+                    >
+                      <td className="px-4 py-3">
                         {isEditing ? (
-                          <>
-                            <button
-                              type="button"
-                              className="btn-secondary"
-                              onClick={() => setEditingId(null)}
-                            >
-                              Cancelar
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-primary"
-                              disabled={saving}
-                              onClick={() => void handleSave(item)}
-                            >
-                              {saving ? 'Guardando...' : 'Guardar'}
-                            </button>
-                          </>
+                          <input
+                            className="input"
+                            value={edit.name}
+                            onChange={(e) =>
+                              setEdit((prev) => ({ ...prev, name: e.target.value }))
+                            }
+                          />
                         ) : (
-                          <>
+                          <div className="flex items-center gap-2">
+                            <span className="font-display text-base font-semibold tracking-tight text-ink">
+                              {item.name}
+                            </span>
+                            {currentUser?.id === item.id && <span className="serial">(vos)</span>}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {isEditing ? (
+                          <input
+                            className="input"
+                            type="email"
+                            value={edit.email}
+                            onChange={(e) =>
+                              setEdit((prev) => ({ ...prev, email: e.target.value }))
+                            }
+                          />
+                        ) : (
+                          <span className="font-mono text-[12px] text-ink-500">{item.email}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {isEditing ? (
+                          <select
+                            className="input"
+                            value={edit.role}
+                            onChange={(e) =>
+                              setEdit((prev) => ({ ...prev, role: e.target.value as Role }))
+                            }
+                          >
+                            {ROLE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <RoleBadge role={item.role} />
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-2">
+                          {isEditing ? (
+                            <>
+                              <button
+                                type="button"
+                                className="btn-ghost btn-sm"
+                                onClick={() => setEditingId(null)}
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-primary btn-sm"
+                                disabled={saving}
+                                onClick={() => void handleSave(item)}
+                              >
+                                {saving ? 'Guardando…' : 'Guardar'}
+                              </button>
+                            </>
+                          ) : (
                             <button
                               type="button"
-                              className="btn-secondary"
+                              className="btn-secondary btn-sm"
                               onClick={() => startEdit(item)}
                             >
                               Editar
                             </button>
-                            {currentUser?.id === item.id && (
-                              <span className="self-center text-xs text-slate-400">vos</span>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
     </div>
   );

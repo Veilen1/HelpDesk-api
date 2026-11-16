@@ -18,16 +18,28 @@ import NotFoundPage from './pages/NotFoundPage';
  * muestra un spinner; si no hay sesión redirige al login conservando
  * la ruta de origen para volver después de autenticarse.
  */
+function BootScreen({ label }: { label: string }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="w-full max-w-sm px-6">
+        <div className="mb-6 flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-[2px] border border-ink bg-ink font-display text-sm font-bold text-paper-50">
+            HD
+          </span>
+          <span className="font-display text-lg font-semibold tracking-tight">HelpDesk</span>
+        </div>
+        <Spinner label={label} />
+      </div>
+    </div>
+  );
+}
+
 function RequireAuth() {
   const { status } = useAuth();
   const location = useLocation();
 
   if (status === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Spinner label="Verificando sesión..." />
-      </div>
-    );
+    return <BootScreen label="Verificando sesión" />;
   }
 
   if (status === 'anonymous') {
@@ -51,11 +63,7 @@ function PublicOnly() {
   const { status } = useAuth();
 
   if (status === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Spinner label="Verificando sesión..." />
-      </div>
-    );
+    return <BootScreen label="Verificando sesión" />;
   }
 
   if (status === 'authenticated') {
